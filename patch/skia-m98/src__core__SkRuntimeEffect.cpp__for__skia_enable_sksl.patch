@@ -1,0 +1,17 @@
+diff --git a/src/core/SkRuntimeEffect.cpp b/src/core/SkRuntimeEffect.cpp
+index 0f0d330..10164d1 100644
+--- a/src/core/SkRuntimeEffect.cpp
++++ b/src/core/SkRuntimeEffect.cpp
+@@ -48,10 +48,10 @@
+ 
+ #include <algorithm>
+ 
+-using ChildType = SkRuntimeEffect::ChildType;
+-
+ #ifdef SK_ENABLE_SKSL
+ 
++using ChildType = SkRuntimeEffect::ChildType;
++
+ static sk_sp<SkSL::SkVMDebugTrace> make_skvm_debug_trace(SkRuntimeEffect* effect,
+                                                          const SkIPoint& coord) {
+     auto debugTrace = sk_make_sp<SkSL::SkVMDebugTrace>();

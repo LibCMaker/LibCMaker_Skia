@@ -1,0 +1,40 @@
+diff --git a/tools/git-sync-deps b/tools/git-sync-deps
+index 5ade484..84ac0d8 100755
+--- a/tools/git-sync-deps
++++ b/tools/git-sync-deps
+@@ -34,7 +34,7 @@ import os
+ import subprocess
+ import sys
+ import threading
+-
++import errno
+ 
+ def git_executable():
+   """Find the git executable.
+@@ -131,10 +131,23 @@ def git_checkout_to_directory(git, repo, commithash, directory, verbose):
+   Raises an exception if any calls to git fail.
+   """
+   if not os.path.isdir(directory):
++    try:
++      os.makedirs(directory)
++    except OSError as e:
++      if e.errno != errno.EEXIST:
++        raise
++
++    # https://stackoverflow.com/questions/31278902/how-to-shallow-clone-a-specific-commit-with-depth-1
++    # https://stackoverflow.com/a/43136160
++    subprocess.check_call(
++      [git, 'init', '--quiet'], cwd=directory)
++    subprocess.check_call(
++      [git, 'remote', 'add', 'origin', repo], cwd=directory)
+     subprocess.check_call(
+-      [git, 'clone', '--quiet', '--no-checkout', repo, directory])
+-    subprocess.check_call([git, 'checkout', '--quiet', commithash],
+-                          cwd=directory)
++      [git, 'fetch', '--depth', '1', 'origin', commithash], cwd=directory)
++    subprocess.check_call(
++      [git, 'checkout', '--quiet', 'FETCH_HEAD'], cwd=directory)
++
+     if verbose:
+       status(directory, commithash, True)
+     return
