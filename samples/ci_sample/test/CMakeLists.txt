@@ -58,8 +58,26 @@ if(BUILD_TESTING)
   if(MSVC OR XCODE)
     set(test_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
   endif()
-  set(font_BIN_DIR "${test_BIN_DIR}")
-  set(data_BIN_DIR "${test_BIN_DIR}")
+  set(font_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+  set(data_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}")
+
+  if(TARGET Skia::icudata)
+    get_target_property(icudata_LIB Skia::icudata IMPORTED_LOCATION)
+
+    add_custom_target(prepare_icudtl_dat
+      COMMAND
+        ${CMAKE_COMMAND} -E make_directory "${test_BIN_DIR}"
+
+      # `icudtl.dat` file
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${icudata_LIB}"
+        "${test_BIN_DIR}"
+    )
+
+    add_dependencies(${test_NAME}
+      prepare_icudtl_dat
+    )
+  endif()
 
   add_custom_target(prepare_test_fonts
     COMMAND
