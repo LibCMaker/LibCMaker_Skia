@@ -25,6 +25,7 @@
 #include "include/core/SkRRect.h"
 #include "include/core/SkSurface.h"
 #include "modules/skshaper/include/SkShaper.h"
+#include "modules/skunicode/include/SkUnicode.h"
 
 #include "FileUtil.h"
 
@@ -108,7 +109,12 @@ TEST(Examle, test)
   paint.setColor(0xff000000);
   paint.setStyle(SkPaint::kFill_Style);
 
+  auto unicode = SkUnicode::Make();
+  ASSERT_TRUE(unicode)
+    << "Check if file 'icudtl.dat' exists in the folder with exe-file of test.";
+
   int yLine = 0;
+
   for (const auto& sample : samples) {
     sk_sp<SkFontMgr> fontMgr = SkFontMgr::RefDefault();
     sk_sp<SkTypeface> typeface = fontMgr->makeFromFile(sample.font.c_str());
@@ -125,31 +131,23 @@ TEST(Examle, test)
 
     std::unique_ptr<SkShaper::LanguageRunIterator> language(
         SkShaper::MakeStdLanguageRunIterator(sample.text.c_str(), len));
-    if (!language) {
-        EXPECT_FALSE(true);
-    }
+    ASSERT_TRUE(language);
 
     std::unique_ptr<SkShaper::FontRunIterator> fontRunIt(
       SkShaper::MakeFontMgrRunIterator(
         sample.text.c_str(), len, srcFont, fontMgr, "FontFamilie",
         SkFontStyle::Normal(), &*language));
-    if (!fontRunIt) {
-        EXPECT_FALSE(true);
-    }
+    ASSERT_TRUE(fontRunIt);
 
     std::unique_ptr<SkShaper::BiDiRunIterator> bidi(
         SkShaper::MakeBiDiRunIterator(sample.text.c_str(), len, 0xfe));
-    if (!bidi) {
-        EXPECT_FALSE(true);
-    }
+    ASSERT_TRUE(bidi);
 
     SkFourByteTag undeterminedScript = SkSetFourByteTag('Z','y','y','y');
     std::unique_ptr<SkShaper::ScriptRunIterator> script(
         SkShaper::MakeScriptRunIterator(sample.text.c_str(), len,
         undeterminedScript));
-    if (!script) {
-        EXPECT_FALSE(true);
-    }
+    ASSERT_TRUE(script);
 
     SkTextBlobBuilderRunHandler builder(sample.text.c_str(), {margin, margin});
 
