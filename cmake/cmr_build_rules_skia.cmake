@@ -33,6 +33,10 @@
   # canvaskit
   # pathkit
 
+
+  # NOTE: See 'declare_args()' in 'skia/gn/BUILDCONFIG.gn'
+  # and in 'skia/gn/skia/BUILD.gn' for useful args.
+
   cmake_policy(PUSH)
 
   cmake_minimum_required(VERSION 3.22)
@@ -129,6 +133,9 @@
     string(APPEND skia_GN_ARGS " target_cpu=\"${target_cpu}\"")
   endif()
 
+  # NOTE: From 'declare_args()' in 'skia/gn/BUILDCONFIG.gn'.
+  #  ios_min_target = ""
+
 
   #-----------------------------------------------------------------------
   # Find required tools
@@ -165,9 +172,21 @@
   if(is_linux OR MINGW)  # TODO: if CMake gen = "Unix Makefiles"
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
         OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-      string(APPEND skia_GN_ARGS " cc=\"${CMAKE_C_COMPILER}\"")
-      string(APPEND skia_GN_ARGS " cxx=\"${CMAKE_CXX_COMPILER}\"")
 
+      #  ar = "ar"
+      #  cc = "cc"
+      #  cxx = "c++"
+      if(CMAKE_C_COMPILER)
+        string(APPEND skia_GN_ARGS " cc=\"${CMAKE_C_COMPILER}\"")
+      endif()
+      if(CMAKE_CXX_COMPILER)
+        string(APPEND skia_GN_ARGS " cxx=\"${CMAKE_CXX_COMPILER}\"")
+      endif()
+      if(CMAKE_AR)
+        string(APPEND skia_GN_ARGS " ar=\"${CMAKE_AR}\"")
+      endif()
+
+      #  cc_wrapper = ""
       if(CMAKE_CXX_COMPILER_LAUNCHER)
         string(APPEND skia_GN_ARGS
           " cc_wrapper=\"${CMAKE_CXX_COMPILER_LAUNCHER}\""
@@ -371,6 +390,7 @@
   # Configure and build
   #
   skia_options_to_gn_args(skia_GN_ARGS)
+  message(STATUS "skia_GN_ARGS: ${skia_GN_ARGS}")
 
   set(configure_STAMP "${lib_BUILD_DIR}/skia_configure.stamp")
   add_custom_command(OUTPUT ${configure_STAMP}
@@ -519,7 +539,7 @@
   # -------------------------------------
   # third_party/expat/BUILD.gn
   # -------------------------------------
-  if(skia_use_expat AND NOT skia_use_system_expat AND NOT is_component_build)
+  if(NOT is_component_build AND skia_use_expat AND NOT skia_use_system_expat)
     install(
       FILES "${skia_BUILD_DIR}/${expat_FILE_NAME}"
       DESTINATION "${skia_INSTALL_LIB_DIR}"
@@ -530,8 +550,8 @@
   # -------------------------------------
   # third_party/freetype2/BUILD.gn
   # -------------------------------------
-  if(skia_use_freetype AND NOT skia_use_system_freetype2 AND
-      NOT is_component_build)
+  if(NOT is_component_build
+      AND skia_use_freetype AND NOT skia_use_system_freetype2)
     install(
       FILES "${skia_BUILD_DIR}/${freetype2_FILE_NAME}"
       DESTINATION "${skia_INSTALL_LIB_DIR}"
@@ -542,8 +562,8 @@
   # -------------------------------------
   # third_party/harfbuzz/BUILD.gn
   # -------------------------------------
-  if(skia_use_harfbuzz AND NOT skia_use_system_harfbuzz AND
-      NOT is_component_build)
+  if(NOT is_component_build
+      AND skia_use_harfbuzz AND NOT skia_use_system_harfbuzz)
     install(
       FILES "${skia_BUILD_DIR}/${harfbuzz_FILE_NAME}"
       DESTINATION "${skia_INSTALL_LIB_DIR}"
@@ -570,7 +590,7 @@
   # TODO:
   #if(skia_use_libjpeg_turbo_decode OR skia_use_libjpeg_turbo_encode AND
   #    NOT skia_use_system_libjpeg_turbo AND NOT is_component_build)
-  if(NOT skia_use_system_libjpeg_turbo AND NOT is_component_build)
+  if(NOT is_component_build AND NOT skia_use_system_libjpeg_turbo)
     install(
       FILES "${skia_BUILD_DIR}/${libjpeg_FILE_NAME}"
       DESTINATION "${skia_INSTALL_LIB_DIR}"
@@ -584,7 +604,7 @@
   # TODO:
   #if(skia_use_libpng_decode OR skia_use_libpng_encode AND
   #    NOT skia_use_system_libpng AND NOT is_component_build)
-  if(NOT skia_use_system_libpng AND NOT is_component_build)
+  if(NOT is_component_build AND NOT skia_use_system_libpng)
     install(
       FILES "${skia_BUILD_DIR}/${libpng_FILE_NAME}"
       DESTINATION "${skia_INSTALL_LIB_DIR}"
@@ -598,7 +618,7 @@
   # TODO:
   #if(skia_use_libwebp_decode OR skia_use_libwebp_encode AND
   #    NOT skia_use_system_libwebp AND NOT is_component_build)
-  if(NOT skia_use_system_libwebp AND NOT is_component_build)
+  if(NOT is_component_build AND NOT skia_use_system_libwebp)
     install(
       FILES
         "${skia_BUILD_DIR}/${libwebp_FILE_NAME}"
@@ -611,7 +631,7 @@
   # -------------------------------------
   # third_party/piex/BUILD.gn
   # -------------------------------------
-  if(skia_use_piex AND NOT is_component_build)
+  if(NOT is_component_build AND skia_use_piex)
     install(
       FILES "${skia_BUILD_DIR}/${piex_FILE_NAME}"
       DESTINATION "${skia_INSTALL_LIB_DIR}"
@@ -646,7 +666,7 @@
   # -------------------------------------
   # third_party/zlib/BUILD.gn
   # -------------------------------------
-  if(skia_use_zlib AND NOT is_component_build)
+  if(NOT is_component_build AND skia_use_zlib)
     if(NOT skia_use_system_zlib)
       install(
         FILES "${skia_BUILD_DIR}/${zlib_FILE_NAME}"
@@ -696,7 +716,7 @@
   # optional("webp_encode")
   # optional("wuffs")
   # optional("xml")
-  # optional("skvm_jit") {
+  # optional("skvm_jit")
 
 
   #skia_component("skia")
@@ -755,7 +775,7 @@
   # -------------------------------------
   # experimental/ffmpeg/BUILD.gn
   # -------------------------------------
-  if(skia_use_ffmpeg AND NOT is_component_build )
+  if(NOT is_component_build AND skia_use_ffmpeg)
     install(
       FILES
         "${skia_BUILD_DIR}/${video_decoder_FILE_NAME}"
