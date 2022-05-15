@@ -239,12 +239,19 @@ if(@skia_use_icu@)
       NAMES "icuuc"
       REQUIRED
     )
-  #elseif(NOT is_component_build)
-  elseif(NOT @is_component_build@)
-    set_and_check(icu_LIB "${skia_LIB_DIR}/@icu_FILE_NAME@")
-    # icudata_LIB is set only for check of file existing.
-    set_and_check(icudata_LIB "${skia_LIB_DIR}/@icudata_FILE_NAME@")
-    set(icu_TYPE STATIC)
+  else()
+    add_library(Skia::icudata UNKNOWN IMPORTED)
+    set_and_check(icudata_LIB "${skia_DLL_DIR}/@icudata_FILE_NAME@")
+    set_target_properties(Skia::icudata PROPERTIES
+      IMPORTED_LOCATION "${icudata_LIB}"
+      IMPORTED_NO_SONAME ON
+    )
+
+    #if(NOT is_component_build)
+    if(NOT @is_component_build@)
+      set_and_check(icu_LIB "${skia_LIB_DIR}/@icu_FILE_NAME@")
+      set(icu_TYPE STATIC)
+    endif()
   endif()
 endif()
 
