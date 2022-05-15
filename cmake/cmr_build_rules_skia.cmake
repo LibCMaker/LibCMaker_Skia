@@ -25,8 +25,6 @@
 
   # NOTE: Use pattern '*.gn*' for search of usage of options in Skia source tree.
 
-  # TODO: for WIN32 dll use DESTINATION "${CMAKE_INSTALL_BINDIR}" (??? or use _LIBDIR)
-
   # TODO: add these modules:
   # androidkit
   # audioplayer
@@ -195,6 +193,47 @@
     endif()
   endif()
 
+  if(is_win AND MSVC)
+    #  win_sdk = "C:/Program Files (x86)/Windows Kits/10"
+    #  win_sdk_version = ""
+    #  win_vc = ""
+    #  win_toolchain_version = ""
+    #  clang_win = ""
+    #  clang_win_version = ""
+
+    if(cmr_VS_TOOLSET_DIR)
+      string(APPEND skia_GN_ARGS " win_vc=\"${cmr_VS_TOOLSET_DIR}\"")
+    endif()
+    if(cmr_VS_TOOLSET_VERSION)
+      string(APPEND skia_GN_ARGS " win_toolchain_version=\"${cmr_VS_TOOLSET_VERSION}\"")
+    endif()
+    if(cmr_WINDOWS_KITS_DIR)
+      string(APPEND skia_GN_ARGS " win_sdk=\"${cmr_WINDOWS_KITS_DIR}\"")
+    endif()
+    if(cmr_WINDOWS_KITS_VERSION)
+      string(APPEND skia_GN_ARGS " win_sdk_version=\"${cmr_WINDOWS_KITS_VERSION}\"")
+    endif()
+
+    if(CMAKE_GENERATOR_PLATFORM STREQUAL "ARM")
+      set(target_cpu "arm")
+    elseif(CMAKE_GENERATOR_PLATFORM STREQUAL "ARM64")
+      set(target_cpu "arm64")
+    elseif(CMAKE_GENERATOR_PLATFORM STREQUAL "Win32")
+      set(target_cpu "x86")
+    elseif(CMAKE_GENERATOR_PLATFORM STREQUAL "x64")
+      set(target_cpu "x64")
+    else()
+      cmr_print_error("Unsupported CPU arch.")
+    endif()
+
+    string(APPEND skia_GN_ARGS " target_cpu=\"${target_cpu}\"")
+
+    # TODO: clang_win
+    #  clang_win = ""
+    #  clang_win_version = ""
+    # NOTE: https://skia.org/docs/user/build/#highly-recommended-build-with-clang-cl
+  endif()
+
 
   find_package(Git 2.17.1 REQUIRED)
   find_package(Python REQUIRED COMPONENTS Interpreter)
@@ -217,17 +256,93 @@
 
 
   if(NOT "$ENV{PATH}" STRLESS "")
-    set(_PATH ":$ENV{PATH}")
+    if(CMAKE_HOST_WIN32 AND CMAKE_HOST_SYSTEM_NAME MATCHES "Windows"
+        AND NOT CYGWIN)
+      set(_PATH_SEP "$<SEMICOLON>")
+    else()
+      set(_PATH_SEP ":")
+    endif()
+    set(_PATH_ENV "$ENV{PATH}")
+    list(JOIN _PATH_ENV "${_PATH_SEP}" _PATH)
+    # Get the system search path as a list.
+    #file(TO_CMAKE_PATH "$ENV{PATH}" _PATH)
   endif()
   set(skia_ENV
-    "PATH=${skia_DEPOT_TOOLS_DIR}${_PATH}"
     "DEPOT_TOOLS_UPDATE=0"
+    "PATH=$<SHELL_PATH:${skia_DEPOT_TOOLS_DIR}>${_PATH_SEP}${_PATH}"
   )
+
+
+  #-----------------------------------------------------------------------
+  # Flags
+  #
+
+  # NOTE: From 'declare_args()' in 'skia/gn/skia/BUILD.gn'.
+  #  malloc = ""
+  #  werror = false
+  #  xcode_sysroot = ""
+
+  # List of flags:
+  #extra_cflags = [
+  #    "--flag1",
+  #    "--flag2",
+  #    "--flag3",
+  #]
+
+  set(flag_MT_MD_sfx "$<$<CONFIG:Debug>:d>")
+  if(BUILD_SHARED_LIBS)
+    set(flag_MT_MD "/MD${flag_MT_MD_sfx}")
+  else()
+    set(flag_MT_MD "/MT${flag_MT_MD_sfx}")
+  endif()
+  string(APPEND extra_cflags " \"${flag_MT_MD}\",")
+
+  if(WIN32 AND MSVC AND (TARGETING_XP_64 OR TARGETING_XP))
+    string(APPEND extra_cflags " \"/D_ATL_XP_TARGETING\",")
+  endif()
+
+  if(extra_cflags)
+    set(extra_cflags "[${extra_cflags}]")
+  endif()
+
+
+  # TODO: Make flags in form of GN-list:  set(extra_cflags_c "[\"flag1\", \"flag2\", ...]")
+  if(CMAKE_ASM_FLAGS OR CMAKE_ASM_FLAGS_DEBUG OR CMAKE_ASM_FLAGS_RELEASE)
+    #set(extra_asmflags "${CMAKE_ASM_FLAGS} $<IF:$<CONFIG:Debug>,${CMAKE_ASM_FLAGS_DEBUG},${CMAKE_ASM_FLAGS_RELEASE}>")
+  endif()
+  if(CMAKE_C_FLAGS OR CMAKE_C_FLAGS_DEBUG OR CMAKE_C_FLAGS_RELEASE)
+    #set(extra_cflags_c "${CMAKE_C_FLAGS} $<IF:$<CONFIG:Debug>,${CMAKE_C_FLAGS_DEBUG},${CMAKE_C_FLAGS_RELEASE}>")
+  endif()
+  if(CMAKE_CXX_FLAGS OR CMAKE_CXX_FLAGS_DEBUG OR CMAKE_CXX_FLAGS_RELEASE)
+    #set(extra_cflags_cc "${CMAKE_CXX_FLAGS} $<IF:$<CONFIG:Debug>,${CMAKE_CXX_FLAGS_DEBUG},${CMAKE_CXX_FLAGS_RELEASE}>")
+  endif()
+  if(BUILD_SHARED_LIBS AND CMAKE_SHARED_LINKER_FLAGS)
+    #set(extra_ldflags "${CMAKE_SHARED_LINKER_FLAGS}")
+  endif()
+
+
+  if(extra_cflags)
+    string(APPEND skia_GN_ARGS " extra_cflags=${extra_cflags}")
+  endif()
+  if(extra_cflags_c)
+    string(APPEND skia_GN_ARGS " extra_cflags_c=${extra_cflags_c}")
+  endif()
+  if(extra_cflags_cc)
+    string(APPEND skia_GN_ARGS " extra_cflags_cc=${extra_cflags_cc}")
+  endif()
+  if(extra_asmflags)
+    string(APPEND skia_GN_ARGS " extra_asmflags=${extra_asmflags}")
+  endif()
+  if(extra_ldflags)
+    string(APPEND skia_GN_ARGS " extra_ldflags=${extra_ldflags}")
+  endif()
 
 
   #-----------------------------------------------------------------------
   # GN options
   #
+  skia_not(is_win is_not_win)
+
   set(is_official_build "$<IF:$<CONFIG:Debug>,false,true>")  # default: false
   string(APPEND skia_GN_ARGS " is_official_build=${is_official_build}")
 
@@ -263,7 +378,6 @@
   skia_option(skia_use_libpng_encode true)  # default: true
   skia_option(skia_use_libwebp_decode true)  # default: true
   skia_option(skia_use_libwebp_encode true)  # default: true
-  skia_not(is_win is_not_win)
   skia_option(skia_use_piex ${is_not_win})  # default: !is_win
   skia_option(skia_use_zlib true)  # default: true
 
@@ -321,6 +435,9 @@
   endif()
   skia_option(skia_enable_fontmgr_android ${_skia_enable_fontmgr_android})  # default: skia_use_expat && skia_use_freetype
 
+  skia_option(skia_enable_fontmgr_custom_directory ${skia_use_freetype})  # default: skia_use_freetype && !is_fuchsia
+  skia_option(skia_enable_fontmgr_custom_embedded false)  # default: skia_use_freetype && !is_fuchsia
+  skia_option(skia_enable_fontmgr_custom_empty false)  # default: skia_use_freetype
 
   if(skia_use_freetype AND skia_use_fontconfig)
     set(_skia_enable_fontmgr_fontconfig true)
@@ -342,14 +459,10 @@
   endif()
   skia_option(skia_use_fonthost_mac ${_skia_use_fonthost_mac})  # default: is_mac || is_ios
 
-  if(is_win AND NOT skia_enable_winuwp)
-    set(_skia_enable_fontmgr_win_gdi true)
-  else()
-    set(_skia_enable_fontmgr_win_gdi false)
-  endif()
-  skia_option(skia_enable_fontmgr_win_gdi ${_skia_enable_fontmgr_win_gdi})  # default: is_win && !skia_enable_winuwp
+  skia_option(skia_enable_fontmgr_win false)  # default: is_win
+  skia_option(skia_enable_fontmgr_win_gdi false)  # default: is_win && !skia_enable_winuwp
 
-  if(skia_use_libjpeg_turbo_decode AND skia_use_zlib)
+  if(skia_use_libjpeg_turbo_decode AND skia_use_zlib AND is_not_win)
     set(_skia_use_dng_sdk true)
   else()
     set(_skia_use_dng_sdk false)
@@ -359,8 +472,20 @@
 
   skia_option(skia_enable_particles true)  # default: true
   skia_option(skia_enable_skshaper true)  # default: true
-  skia_option(skia_enable_skottie true)  # default: !(is_win && is_component_build)
-  skia_option(skia_enable_svg true)  # default: !is_component_build
+
+  if(is_win AND is_component_build AND MSVC)
+    set(_skia_enable_skottie false)
+  else()
+    set(_skia_enable_skottie true)
+  endif()
+  skia_option(skia_enable_skottie ${_skia_enable_skottie})  # default: !(is_win && is_component_build)
+
+  if(is_win AND is_component_build AND MSVC)
+    set(_skia_enable_svg false)
+  else()
+    set(_skia_enable_svg true)
+  endif()
+  skia_option(skia_enable_svg ${_skia_enable_svg})  # default: !is_component_build
 
   skia_option(skia_enable_skparagraph true)  # default: true
   skia_option(paragraph_gms_enabled true)  # default: true
@@ -467,9 +592,15 @@
   endif()
 
   set(skia_INSTALL_INCLUDE_DIR "${CMAKE_INSTALL_INCLUDEDIR}/skia")
-  set(skia_INSTALL_MODULES_DIR "${skia_INSTALL_INCLUDE_DIR}/modules")
   set(skia_INSTALL_EXPERIMENTAL_DIR "${skia_INSTALL_INCLUDE_DIR}/experimental")
+  set(skia_INSTALL_MODULES_DIR "${skia_INSTALL_INCLUDE_DIR}/modules")
+  set(skia_INSTALL_BIN_DIR "${CMAKE_INSTALL_BINDIR}")
   set(skia_INSTALL_LIB_DIR "${CMAKE_INSTALL_LIBDIR}")
+  set(skia_INSTALL_PDB_DIR "${CMAKE_INSTALL_BINDIR}")
+
+  set(skia_INSTALL_DLL_DIR
+    "$<IF:$<AND:$<BOOL:${is_win}>,$<BOOL:${BUILD_SHARED_LIBS}>>,${skia_INSTALL_BIN_DIR},${skia_INSTALL_LIB_DIR}>"
+  )
 
   set(brotli_FILE_NAME "${lib_PFX}brotli${lib_SFX}")
   set(dng_sdk_FILE_NAME "${lib_PFX}dng_sdk${lib_SFX}")
@@ -481,10 +612,10 @@
   # TODO: icudata_FILE_NAME
   # TODO: generator expr (if android, android_small, cast, common, ios in <skia/third_party/externals/icu>) for icudtb.dat and icudtl_extra.dat
   set(icudata_FILE_NAME "icudtl.dat")
-  set(libjpeg_FILE_NAME "${lib_PFX}jpeg${lib_SFX}")
-  set(libpng_FILE_NAME "${lib_PFX}png${lib_SFX}")
-  set(libwebp_FILE_NAME "${lib_PFX}webp${lib_SFX}")
-  set(libwebp_sse41_FILE_NAME "${lib_PFX}webp_sse41${lib_SFX}")
+  set(libjpeg_FILE_NAME "libjpeg${lib_SFX}")
+  set(libpng_FILE_NAME "libpng${lib_SFX}")
+  set(libwebp_FILE_NAME "libwebp${lib_SFX}")
+  set(libwebp_sse41_FILE_NAME "libwebp_sse41${lib_SFX}")
   set(piex_FILE_NAME "${lib_PFX}piex${lib_SFX}")
   set(sfntly_FILE_NAME "${lib_PFX}sfntly${lib_SFX}")
   set(spirv_cross_FILE_NAME "${lib_PFX}spirv_cross${lib_SFX}")
@@ -497,15 +628,30 @@
   set(video_encoder_FILE_NAME "${lib_PFX}video_encoder${lib_SFX}")
 
   set(particles_FILE_NAME "${lib_PFX}particles${lib_SFX}")
-  set(skia_FILE_NAME "${lib_PFX}skia${lib_SFX}")
   set(skottie_FILE_NAME "${lib_PFX}skottie${lib_SFX}")
-  set(skparagraph_FILE_NAME "${lib_PFX}skparagraph${lib_SFX}")
   set(skresources_FILE_NAME "${lib_PFX}skresources${lib_SFX}")
   set(sksg_FILE_NAME "${lib_PFX}sksg${lib_SFX}")
-  set(skshaper_FILE_NAME "${lib_PFX}skshaper${lib_SFX}")
-  set(sktext_FILE_NAME "${lib_PFX}sktext${lib_SFX}")
-  set(skunicode_FILE_NAME "${lib_PFX}skunicode${lib_SFX}")
   set(svg_FILE_NAME "${lib_PFX}svg${lib_SFX}")
+
+  set(skia_FILE_NAME "${lib_PFX}skia${lib_SFX}")
+  set(skia_DLL_LIB_FILE_NAME "skia.dll.lib")
+  set(skia_DLL_PDB_FILE_NAME "skia.dll.pdb")
+
+  set(skparagraph_FILE_NAME "${lib_PFX}skparagraph${lib_SFX}")
+  set(skparagraph_DLL_LIB_FILE_NAME "skparagraph.dll.lib")
+  set(skparagraph_DLL_PDB_FILE_NAME "skparagraph.dll.pdb")
+
+  set(skshaper_FILE_NAME "${lib_PFX}skshaper${lib_SFX}")
+  set(skshaper_DLL_LIB_FILE_NAME "skshaper.dll.lib")
+  set(skshaper_DLL_PDB_FILE_NAME "skshaper.dll.pdb")
+
+  set(sktext_FILE_NAME "${lib_PFX}sktext${lib_SFX}")
+  set(sktext_DLL_LIB_FILE_NAME "sktext.dll.lib")
+  set(sktext_DLL_PDB_FILE_NAME "sktext.dll.pdb")
+
+  set(skunicode_FILE_NAME "${lib_PFX}skunicode${lib_SFX}")
+  set(skunicode_DLL_LIB_FILE_NAME "skunicode.dll.lib")
+  set(skunicode_DLL_PDB_FILE_NAME "skunicode.dll.pdb")
 
 
   # -------------------------------------
@@ -574,13 +720,19 @@
   # -------------------------------------
   # third_party/icu/BUILD.gn
   # -------------------------------------
-  if(skia_use_icu AND NOT skia_use_system_icu AND NOT is_component_build)
+  if(skia_use_icu AND NOT skia_use_system_icu)
     install(
       FILES
-        "${skia_BUILD_DIR}/${icu_FILE_NAME}"
         "${skia_BUILD_DIR}/${icudata_FILE_NAME}"
-      DESTINATION "${skia_INSTALL_LIB_DIR}"
+      DESTINATION "${skia_INSTALL_DLL_DIR}"
     )
+    if(NOT is_component_build)
+      install(
+        FILES
+          "${skia_BUILD_DIR}/${icu_FILE_NAME}"
+        DESTINATION "${skia_INSTALL_LIB_DIR}"
+      )
+    endif()
   endif()
 
 
@@ -686,6 +838,10 @@
   # -------------------------------------
 
   # optional("fontmgr_android")
+  # optional("fontmgr_custom")
+  # optional("fontmgr_custom_directory")
+  # optional("fontmgr_custom_embedded")
+  # optional("fontmgr_custom_empty")
   # optional("fontmgr_fontconfig")
   # optional("fontmgr_FontConfigInterface")
   # optional("fontmgr_mac_ct")
@@ -722,8 +878,18 @@
   #skia_component("skia")
   install(
     FILES "${skia_BUILD_DIR}/${skia_FILE_NAME}"
-    DESTINATION "${skia_INSTALL_LIB_DIR}"
+    DESTINATION "${skia_INSTALL_DLL_DIR}"
   )
+  if(is_component_build AND is_win)
+    install(
+      FILES "${skia_BUILD_DIR}/${skia_DLL_LIB_FILE_NAME}"
+      DESTINATION "${skia_INSTALL_LIB_DIR}"
+    )
+    install(
+      FILES "$<$<CONFIG:Debug>:${skia_BUILD_DIR}/${skia_DLL_PDB_FILE_NAME}>"
+      DESTINATION "${skia_INSTALL_PDB_DIR}"
+    )
+  endif()
 
   install(
     DIRECTORY
@@ -741,6 +907,35 @@
       "${skia_SRC_DIR}/include/utils"
     DESTINATION "${skia_INSTALL_INCLUDE_DIR}/include"
     FILES_MATCHING PATTERN "*.h"
+  )
+
+  install(
+    FILES
+      "${skia_SRC_DIR}/src/core/SkLRUCache.h"
+      "${skia_SRC_DIR}/src/core/SkTLazy.h"
+    DESTINATION "${skia_INSTALL_INCLUDE_DIR}/src/core"
+  )
+
+  install(
+    FILES
+      "${skia_SRC_DIR}/src/sksl/SkSLLexer.h"
+      "${skia_SRC_DIR}/src/sksl/SkSLModifiersPool.h"
+      "${skia_SRC_DIR}/src/sksl/SkSLPool.h"
+    DESTINATION "${skia_INSTALL_INCLUDE_DIR}/src/sksl"
+  )
+
+  install(
+    FILES
+      "${skia_SRC_DIR}/src/sksl/ir/SkSLExternalFunction.h"
+    DESTINATION "${skia_INSTALL_INCLUDE_DIR}/src/sksl/ir"
+  )
+
+  install(
+    FILES
+      "${skia_SRC_DIR}/src/utils/SkJSON.h"
+      "${skia_SRC_DIR}/src/utils/SkJSONWriter.h"
+      "${skia_SRC_DIR}/src/utils/SkUTF.h"
+    DESTINATION "${skia_INSTALL_INCLUDE_DIR}/src/utils"
   )
 
   #skia_static_library("pathkit")
@@ -793,13 +988,23 @@
       AND skia_use_harfbuzz)
     install(
       FILES "${skia_BUILD_DIR}/${sktext_FILE_NAME}"
-      DESTINATION "${skia_INSTALL_LIB_DIR}"
+      DESTINATION "${skia_INSTALL_DLL_DIR}"
     )
     install(
       DIRECTORY "${skia_SRC_DIR}/experimental/sktext/include"
       DESTINATION "${skia_INSTALL_EXPERIMENTAL_DIR}/sktext"
       FILES_MATCHING PATTERN "*.h"
     )
+    if(is_component_build AND is_win)
+      #install(
+      #  FILES "${skia_BUILD_DIR}/${sktext_DLL_LIB_FILE_NAME}"
+      #  DESTINATION "${skia_INSTALL_LIB_DIR}"
+      #)
+      install(
+        FILES "$<$<CONFIG:Debug>:${skia_BUILD_DIR}/${sktext_DLL_PDB_FILE_NAME}>"
+        DESTINATION "${skia_INSTALL_PDB_DIR}"
+      )
+    endif()
   endif()
 
 
@@ -847,13 +1052,23 @@
       AND skia_use_harfbuzz)
     install(
       FILES "${skia_BUILD_DIR}/${skparagraph_FILE_NAME}"
-      DESTINATION "${skia_INSTALL_LIB_DIR}"
+      DESTINATION "${skia_INSTALL_DLL_DIR}"
     )
     install(
       DIRECTORY "${skia_SRC_DIR}/modules/skparagraph/include"
       DESTINATION "${skia_INSTALL_MODULES_DIR}/skparagraph"
       FILES_MATCHING PATTERN "*.h"
     )
+    if(is_component_build AND is_win)
+      #install(
+      #  FILES "${skia_BUILD_DIR}/${skparagraph_DLL_LIB_FILE_NAME}"
+      #  DESTINATION "${skia_INSTALL_LIB_DIR}"
+      #)
+      install(
+        FILES "$<$<CONFIG:Debug>:${skia_BUILD_DIR}/${skparagraph_DLL_PDB_FILE_NAME}>"
+        DESTINATION "${skia_INSTALL_PDB_DIR}"
+      )
+    endif()
   endif()
 
 
@@ -891,15 +1106,17 @@
   # modules/sksg/BUILD.gn
   # -------------------------------------
   # skia_component("sksg")
-  install(
-    FILES "${skia_BUILD_DIR}/${sksg_FILE_NAME}"
-    DESTINATION "${skia_INSTALL_LIB_DIR}"
-  )
-  install(
-    DIRECTORY "${skia_SRC_DIR}/modules/sksg/include"
-    DESTINATION "${skia_INSTALL_MODULES_DIR}/sksg"
-    FILES_MATCHING PATTERN "*.h"
-  )
+  if(skia_enable_skottie)
+    install(
+      FILES "${skia_BUILD_DIR}/${sksg_FILE_NAME}"
+      DESTINATION "${skia_INSTALL_LIB_DIR}"
+    )
+    install(
+      DIRECTORY "${skia_SRC_DIR}/modules/sksg/include"
+      DESTINATION "${skia_INSTALL_MODULES_DIR}/sksg"
+      FILES_MATCHING PATTERN "*.h"
+    )
+  endif()
 
 
   # -------------------------------------
@@ -909,13 +1126,23 @@
   if(skia_enable_skshaper)
     install(
       FILES "${skia_BUILD_DIR}/${skshaper_FILE_NAME}"
-      DESTINATION "${skia_INSTALL_LIB_DIR}"
+      DESTINATION "${skia_INSTALL_DLL_DIR}"
     )
     install(
       DIRECTORY "${skia_SRC_DIR}/modules/skshaper/include"
       DESTINATION "${skia_INSTALL_MODULES_DIR}/skshaper"
       FILES_MATCHING PATTERN "*.h"
     )
+    if(is_component_build AND is_win)
+      install(
+        FILES "${skia_BUILD_DIR}/${skshaper_DLL_LIB_FILE_NAME}"
+        DESTINATION "${skia_INSTALL_LIB_DIR}"
+      )
+      install(
+        FILES "$<$<CONFIG:Debug>:${skia_BUILD_DIR}/${skshaper_DLL_PDB_FILE_NAME}>"
+        DESTINATION "${skia_INSTALL_PDB_DIR}"
+      )
+    endif()
   endif()
 
 
@@ -926,13 +1153,23 @@
   if(skia_use_icu)
     install(
       FILES "${skia_BUILD_DIR}/${skunicode_FILE_NAME}"
-      DESTINATION "${skia_INSTALL_LIB_DIR}"
+      DESTINATION "${skia_INSTALL_DLL_DIR}"
     )
     install(
       DIRECTORY "${skia_SRC_DIR}/modules/skunicode/include"
       DESTINATION "${skia_INSTALL_MODULES_DIR}/skunicode"
       FILES_MATCHING PATTERN "*.h"
     )
+    if(is_component_build AND is_win)
+      install(
+        FILES "${skia_BUILD_DIR}/${skunicode_DLL_LIB_FILE_NAME}"
+        DESTINATION "${skia_INSTALL_LIB_DIR}"
+      )
+      install(
+        FILES "$<$<CONFIG:Debug>:${skia_BUILD_DIR}/${skunicode_DLL_PDB_FILE_NAME}>"
+        DESTINATION "${skia_INSTALL_PDB_DIR}"
+      )
+    endif()
   endif()
 
 
@@ -966,7 +1203,14 @@
     "${CMAKE_CURRENT_LIST_DIR}/SkiaConfig.in.cmake"
     "${skia_CMAKE_GEN_DIR}/SkiaConfig.gen.cmake"
     INSTALL_DESTINATION "${skia_INSTALL_LIB_DIR}/cmake/Skia"
-    PATH_VARS CMAKE_INSTALL_INCLUDEDIR CMAKE_INSTALL_LIBDIR
+    PATH_VARS
+      skia_INSTALL_INCLUDE_DIR
+      skia_INSTALL_EXPERIMENTAL_DIR
+      skia_INSTALL_MODULES_DIR
+      skia_INSTALL_BIN_DIR
+      skia_INSTALL_DLL_DIR
+      skia_INSTALL_LIB_DIR
+      skia_INSTALL_PDB_DIR
   )
   write_basic_package_version_file(
     "${skia_CMAKE_GEN_DIR}/SkiaConfigVersion.cmake"

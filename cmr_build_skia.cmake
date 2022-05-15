@@ -71,6 +71,9 @@ macro(skia_option _option _value)
 endmacro()
 
 
+# TODO:
+#skia_not(is_win is_not_win)
+
 skia_option(skia_enable_api_available_macro true)  # default: true
 
 skia_option(skia_use_system_expat false)  # default: is_official_build
@@ -95,7 +98,6 @@ skia_option(skia_use_libpng_encode true)  # default: true
 skia_option(skia_use_libwebp_decode true)  # default: true
 skia_option(skia_use_libwebp_encode true)  # default: true
 # TODO:
-#skia_not(is_win is_not_win)
 #skia_option(skia_use_piex ${is_not_win})  # default: !is_win
 skia_option(skia_use_zlib true)  # default: true
 
@@ -121,13 +123,16 @@ skia_option(skia_use_wuffs false)  # default: false
 skia_option(skia_use_xps false)  # default: true
 skia_not(skia_use_wuffs skia_not_use_wuffs)
 skia_option(skia_use_libgifcodec ${skia_not_use_wuffs})  # default: !skia_use_wuffs
-skia_option(skia_use_dng_sdk true)  # default: !is_fuchsia && skia_use_libjpeg_turbo_decode && skia_use_zlib
+# TODO: AND is_not_win
+#skia_option(skia_use_dng_sdk true)  # default: !is_fuchsia && skia_use_libjpeg_turbo_decode && skia_use_zlib
 
 
 skia_option(skia_enable_particles true)  # default: true
 skia_option(skia_enable_skshaper true)  # default: true
-skia_option(skia_enable_skottie true)  # default: !(is_win && is_component_build)
-skia_option(skia_enable_svg true)  # default: !is_component_build
+# TODO: is_win AND is_component_build AND MSVC
+#skia_option(skia_enable_skottie true)  # default: !(is_win && is_component_build)
+# TODO: is_win AND is_component_build AND MSVC
+#skia_option(skia_enable_svg true)  # default: !is_component_build
 
 skia_option(skia_enable_skparagraph true)  # default: true
 skia_option(paragraph_gms_enabled true)  # default: true

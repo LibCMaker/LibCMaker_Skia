@@ -1,0 +1,12 @@
+diff --git a/BUILD.gn b/BUILD.gn
+index 22f94f0..57b3cce 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -1357,6 +1357,7 @@ skia_component("skia") {
+     libs += [
+       "Ole32.lib",
+       "OleAut32.lib",
++      "Gdi32.lib",
+     ]
+ 
+     if (!skia_enable_winuwp) {

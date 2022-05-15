@@ -52,7 +52,9 @@ if(BUILD_TESTING)
       endif()
     endif()
   endif()
-
+  if(MSVC)
+    set(platform_graphics_SRC_DIR "${data_SRC_DIR}/graphics_2")
+  endif()
 
   set(test_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}")
   if(MSVC OR XCODE)

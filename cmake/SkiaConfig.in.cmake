@@ -12,15 +12,34 @@
 
 # NOTE: Use pattern '*.gn*' for search of usage of options in Skia source tree.
 
-# TODO: Use IMPORTED_IMPLIB for the .lib part of a Windows DLL.
-
 set(lib_PFX "@lib_PFX@")
 set(lib_SFX "@lib_SFX@")
 
-set(skia_INCLUDE_DIR "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@/skia")
-set(skia_MODULES_DIR "${skia_INCLUDE_DIR}/modules")
-set(skia_EXPERIMENTAL_DIR "${skia_INCLUDE_DIR}/experimental")
-set(skia_LIB_DIR "@PACKAGE_CMAKE_INSTALL_LIBDIR@")
+set(skia_INCLUDE_DIR "@PACKAGE_skia_INSTALL_INCLUDE_DIR@")
+set(skia_EXPERIMENTAL_DIR "@PACKAGE_skia_INSTALL_EXPERIMENTAL_DIR@")
+set(skia_MODULES_DIR "@PACKAGE_skia_INSTALL_MODULES_DIR@")
+set(skia_BIN_DIR "@PACKAGE_skia_INSTALL_BIN_DIR@")
+set(skia_DLL_DIR "@PACKAGE_skia_INSTALL_DLL_DIR@")
+set(skia_LIB_DIR "@PACKAGE_skia_INSTALL_LIB_DIR@")
+set(skia_PDB_DIR "@PACKAGE_skia_INSTALL_PDB_DIR@")
+
+#if(is_win)
+if(@is_win@)
+  if(cmr_WINDOWS_KITS_DIR)
+    set(_win_kit_dir "${cmr_WINDOWS_KITS_DIR}")
+  else()
+    set(_win_kit_dir "@cmr_WINDOWS_KITS_DIR@")
+  endif()
+  if(cmr_WINDOWS_KITS_VERSION)
+    set(_win_kit_ver "${cmr_WINDOWS_KITS_VERSION}")
+  else()
+    set(_win_kit_ver "@cmr_WINDOWS_KITS_VERSION@")
+  endif()
+  set(_win_kit_arch "@target_cpu@")
+
+  include(cmr_msvc_utils)
+  get_windows_kits_library_dirs(${_win_kit_dir} ${_win_kit_ver} ${_win_kit_arch} _windows_kits_library_dirs)
+endif()
 
 macro(skia_find_library name)
   if(NOT TARGET ${name})
@@ -39,6 +58,7 @@ macro(skia_find_library_win name)
   if(NOT TARGET ${name})
     find_library(${name}_LIB
       NAMES "${name}.lib"
+      PATHS ${_windows_kits_library_dirs}
       REQUIRED
     )
     add_library("SkiaInternal_${name}" UNKNOWN IMPORTED)
@@ -617,6 +637,48 @@ if(NOT @is_component_build@ AND @skia_enable_fontmgr_android@)
   )
 endif()
 
+# optional("fontmgr_custom")
+add_library(SkiaInternal_fontmgr_custom INTERFACE)
+#if(NOT is_component_build AND
+#    (skia_enable_fontmgr_custom_directory OR
+#    skia_enable_fontmgr_custom_embedded OR
+#    skia_enable_fontmgr_custom_empty))
+if(NOT @is_component_build@ AND
+    (@skia_enable_fontmgr_custom_directory@ OR
+    @skia_enable_fontmgr_custom_embedded@ OR
+    @skia_enable_fontmgr_custom_empty@))
+  set_property(TARGET SkiaInternal_fontmgr_custom APPEND PROPERTY
+    INTERFACE_LINK_LIBRARIES SkiaInternal_typeface_freetype
+  )
+endif()
+
+# optional("fontmgr_custom_directory")
+add_library(SkiaInternal_fontmgr_custom_directory INTERFACE)
+#if(NOT is_component_build AND skia_enable_fontmgr_custom_directory)
+if(NOT @is_component_build@ AND @skia_enable_fontmgr_custom_directory@)
+  set_property(TARGET SkiaInternal_fontmgr_custom_directory APPEND PROPERTY
+    INTERFACE_LINK_LIBRARIES SkiaInternal_fontmgr_custom SkiaInternal_typeface_freetype
+  )
+endif()
+
+# optional("fontmgr_custom_embedded")
+add_library(SkiaInternal_fontmgr_custom_embedded INTERFACE)
+#if(NOT is_component_build AND skia_enable_fontmgr_custom_embedded)
+if(NOT @is_component_build@ AND @skia_enable_fontmgr_custom_embedded@)
+  set_property(TARGET SkiaInternal_fontmgr_custom_embedded APPEND PROPERTY
+    INTERFACE_LINK_LIBRARIES SkiaInternal_fontmgr_custom SkiaInternal_typeface_freetype
+  )
+endif()
+
+# optional("fontmgr_custom_empty")
+add_library(SkiaInternal_fontmgr_custom_empty INTERFACE)
+#if(NOT is_component_build AND skia_enable_fontmgr_custom_empty)
+if(NOT @is_component_build@ AND @skia_enable_fontmgr_custom_empty@)
+  set_property(TARGET SkiaInternal_fontmgr_custom_empty APPEND PROPERTY
+    INTERFACE_LINK_LIBRARIES SkiaInternal_fontmgr_custom SkiaInternal_typeface_freetype
+  )
+endif()
+
 # optional("fontmgr_fontconfig")
 add_library(SkiaInternal_fontmgr_fontconfig INTERFACE)
 #if(NOT is_component_build AND skia_enable_fontmgr_fontconfig)
@@ -719,8 +781,8 @@ if(@skia_enable_gpu@)
 
       #elseif(is_win AND NOT skia_enable_winuwp)
       elseif(@is_win@ AND NOT @skia_enable_winuwp@)
-        #if(target_cpu STREQUAL "arm64")
-        if("@target_cpu@" STREQUAL "arm64")
+        #if(NOT target_cpu STREQUAL "arm64")
+        if(NOT "@target_cpu@" STREQUAL "arm64")
           skia_find_library_win("OpenGL32")
           set_property(TARGET SkiaInternal_gpu APPEND PROPERTY
             INTERFACE_LINK_LIBRARIES SkiaInternal_OpenGL32
@@ -1157,10 +1219,17 @@ add_library(Skia::skia ${lib_type} IMPORTED)
 
 skia_set_target_properties(Skia::skia)
 
-set_and_check(skia_LIB "${skia_LIB_DIR}/@skia_FILE_NAME@")
+set_and_check(skia_LIB "${skia_DLL_DIR}/@skia_FILE_NAME@")
 set_target_properties(Skia::skia PROPERTIES
   IMPORTED_LOCATION "${skia_LIB}"
 )
+#if(is_win AND is_component_build)
+if(@is_win@ AND @is_component_build@)
+  set_and_check(skia_DLL_LIB "${skia_LIB_DIR}/@skia_DLL_LIB_FILE_NAME@")
+  set_target_properties(Skia::skia PROPERTIES
+    IMPORTED_IMPLIB "${skia_DLL_LIB}"
+  )
+endif()
 
 # Skia public API, generally provided by :skia.
 #config("skia_public")
@@ -1241,9 +1310,9 @@ set_property(TARGET Skia::skia APPEND PROPERTY
   INTERFACE_LINK_LIBRARIES
     SkiaInternal_fontmgr_FontConfigInterface
     SkiaInternal_fontmgr_android
-    #SkiaInternal_fontmgr_custom_directory
-    #SkiaInternal_fontmgr_custom_embedded
-    #SkiaInternal_fontmgr_custom_empty
+    SkiaInternal_fontmgr_custom_directory
+    SkiaInternal_fontmgr_custom_embedded
+    SkiaInternal_fontmgr_custom_empty
     SkiaInternal_fontmgr_fontconfig
     #SkiaInternal_fontmgr_fuchsia
     SkiaInternal_fontmgr_mac_ct
@@ -1511,22 +1580,28 @@ endif()
 # modules/sksg/BUILD.gn
 # -------------------------------------
 # skia_component("sksg")
-add_library(Skia::sksg ${lib_type} IMPORTED)
+add_library(Skia_sksg INTERFACE)
+add_library(Skia::sksg ALIAS Skia_skresources)
 
-# config("public_config")
-#include_dirs = [ "include" ]
-set_property(TARGET Skia::sksg APPEND PROPERTY
-  INTERFACE_INCLUDE_DIRECTORIES "${skia_MODULES_DIR}/sksg/include"
-)
+#if(skia_enable_skottie)
+if(@skia_enable_skottie@)
+  # config("public_config")
+  #include_dirs = [ "include" ]
+  set_property(TARGET Skia_sksg APPEND PROPERTY
+    INTERFACE_INCLUDE_DIRECTORIES "${skia_MODULES_DIR}/sksg/include"
+  )
 
-set_and_check(sksg_LIB "${skia_LIB_DIR}/@sksg_FILE_NAME@")
-set_target_properties(Skia::sksg PROPERTIES
-  IMPORTED_LOCATION "${sksg_LIB}"
-)
-set_property(TARGET Skia::sksg APPEND PROPERTY
-  INTERFACE_LINK_LIBRARIES
-    Skia::skia
-)
+  set_and_check(sksg_LIB "${skia_LIB_DIR}/@sksg_FILE_NAME@")
+  skia_set_imported_location(Skia_sksg ${lib_type}
+    "${sksg_LIB}"
+  )
+
+  set_property(TARGET Skia_sksg APPEND PROPERTY
+    INTERFACE_LINK_LIBRARIES
+      Skia::skia
+  )
+endif()
+
 
 
 # -------------------------------------
@@ -1552,10 +1627,17 @@ if(@skia_use_icu@)
     )
   endif()
 
-  set_and_check(skunicode_LIB "${skia_LIB_DIR}/@skunicode_FILE_NAME@")
+  set_and_check(skunicode_LIB "${skia_DLL_DIR}/@skunicode_FILE_NAME@")
   set_target_properties(Skia::skunicode PROPERTIES
     IMPORTED_LOCATION "${skunicode_LIB}"
   )
+  #if(is_win AND is_component_build)
+  if(@is_win@ AND @is_component_build@)
+    set_and_check(skunicode_DLL_LIB "${skia_LIB_DIR}/@skunicode_DLL_LIB_FILE_NAME@")
+    set_target_properties(Skia::skunicode PROPERTIES
+      IMPORTED_IMPLIB "${skunicode_DLL_LIB}"
+    )
+  endif()
   set_property(TARGET Skia::skunicode APPEND PROPERTY
     INTERFACE_LINK_LIBRARIES
       Skia::skia
@@ -1606,10 +1688,17 @@ if(@skia_enable_skshaper@)
     )
   endif()
 
-  set_and_check(skshaper_LIB "${skia_LIB_DIR}/@skshaper_FILE_NAME@")
+  set_and_check(skshaper_LIB "${skia_DLL_DIR}/@skshaper_FILE_NAME@")
   set_target_properties(Skia::skshaper PROPERTIES
     IMPORTED_LOCATION "${skshaper_LIB}"
   )
+  #if(is_win AND is_component_build)
+  if(@is_win@ AND @is_component_build@)
+    set_and_check(skshaper_DLL_LIB "${skia_LIB_DIR}/@skshaper_DLL_LIB_FILE_NAME@")
+    set_target_properties(Skia::skshaper PROPERTIES
+      IMPORTED_IMPLIB "${skshaper_DLL_LIB}"
+    )
+  endif()
   set_property(TARGET Skia::skshaper APPEND PROPERTY
     INTERFACE_LINK_LIBRARIES
       Skia::skia
@@ -1654,10 +1743,17 @@ if(@skia_enable_sktext@ AND @skia_enable_skshaper@ AND @skia_use_icu@
     AND @skia_use_harfbuzz@)
   #component("sktext")
   add_library(Skia::sktext ${lib_type} IMPORTED)
-  set_and_check(sktext_LIB "${skia_LIB_DIR}/@sktext_FILE_NAME@")
+  set_and_check(sktext_LIB "${skia_DLL_DIR}/@sktext_FILE_NAME@")
   set_target_properties(Skia::sktext PROPERTIES
     IMPORTED_LOCATION "${sktext_LIB}"
   )
+  ##if(is_win AND is_component_build)
+  #if(@is_win@ AND @is_component_build@)
+  #  set_and_check(sktext_DLL_LIB "${skia_LIB_DIR}/@sktext_DLL_LIB_FILE_NAME@")
+  #  set_target_properties(Skia::sktext PROPERTIES
+  #    IMPORTED_IMPLIB "${sktext_DLL_LIB}"
+  #  )
+  #endif()
   set_property(TARGET Skia::sktext APPEND PROPERTY
     INTERFACE_LINK_LIBRARIES
       Skia::skia
@@ -1748,10 +1844,17 @@ if(@skia_enable_skparagraph@ AND @skia_enable_skshaper@ AND @skia_use_icu@
     INTERFACE_COMPILE_DEFINITIONS "SK_ENABLE_PARAGRAPH"
   )
 
-  set_and_check(skparagraph_LIB "${skia_LIB_DIR}/@skparagraph_FILE_NAME@")
+  set_and_check(skparagraph_LIB "${skia_DLL_DIR}/@skparagraph_FILE_NAME@")
   set_target_properties(Skia::skparagraph PROPERTIES
     IMPORTED_LOCATION "${skparagraph_LIB}"
   )
+  ##if(is_win AND is_component_build)
+  #if(@is_win@ AND @is_component_build@)
+  #  set_and_check(skparagraph_DLL_LIB "${skia_LIB_DIR}/@skparagraph_DLL_LIB_FILE_NAME@")
+  #  set_target_properties(Skia::skparagraph PROPERTIES
+  #    IMPORTED_IMPLIB "${skparagraph_DLL_LIB}"
+  #  )
+  #endif()
   set_property(TARGET Skia::skparagraph APPEND PROPERTY
     INTERFACE_LINK_LIBRARIES
       Skia::skia

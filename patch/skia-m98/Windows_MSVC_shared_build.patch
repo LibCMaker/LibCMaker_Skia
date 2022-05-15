@@ -1,0 +1,71 @@
+diff --git a/include/core/SkMatrix.h b/include/core/SkMatrix.h
+index 0314076..b53f3ad 100644
+--- a/include/core/SkMatrix.h
++++ b/include/core/SkMatrix.h
+@@ -1913,10 +1913,7 @@ private:
+     typedef void (*MapXYProc)(const SkMatrix& mat, SkScalar x, SkScalar y,
+                                  SkPoint* result);
+ 
+-    static MapXYProc GetMapXYProc(TypeMask mask) {
+-        SkASSERT((mask & ~kAllMasks) == 0);
+-        return gMapXYProcs[mask & kAllMasks];
+-    }
++    static MapXYProc GetMapXYProc(TypeMask mask);
+ 
+     MapXYProc getMapXYProc() const {
+         return GetMapXYProc(this->getType());
+@@ -1925,10 +1922,7 @@ private:
+     typedef void (*MapPtsProc)(const SkMatrix& mat, SkPoint dst[],
+                                   const SkPoint src[], int count);
+ 
+-    static MapPtsProc GetMapPtsProc(TypeMask mask) {
+-        SkASSERT((mask & ~kAllMasks) == 0);
+-        return gMapPtsProcs[mask & kAllMasks];
+-    }
++    static MapPtsProc GetMapPtsProc(TypeMask mask);
+ 
+     MapPtsProc getMapPtsProc() const {
+         return GetMapPtsProc(this->getType());
+diff --git a/include/core/SkString.h b/include/core/SkString.h
+index 5576e74..d397be7 100644
+--- a/include/core/SkString.h
++++ b/include/core/SkString.h
+@@ -35,8 +35,8 @@ static inline bool SkStrStartsWith(const char string[], const char prefixChar) {
+     return (prefixChar == *string);
+ }
+ 
+-bool SkStrEndsWith(const char string[], const char suffixStr[]);
+-bool SkStrEndsWith(const char string[], const char suffixChar);
++SK_API bool SkStrEndsWith(const char string[], const char suffixStr[]);
++SK_API bool SkStrEndsWith(const char string[], const char suffixChar);
+ 
+ int SkStrStartsWithOneOf(const char string[], const char prefixes[]);
+ 
+diff --git a/src/core/SkMatrix.cpp b/src/core/SkMatrix.cpp
+index 9a57187..33520e8 100644
+--- a/src/core/SkMatrix.cpp
++++ b/src/core/SkMatrix.cpp
+@@ -1029,6 +1029,11 @@ const SkMatrix::MapPtsProc SkMatrix::gMapPtsProcs[] = {
+     SkMatrix::Persp_pts,    SkMatrix::Persp_pts
+ };
+ 
++SkMatrix::MapPtsProc SkMatrix::GetMapPtsProc(TypeMask mask) {
++    SkASSERT((mask & ~kAllMasks) == 0);
++    return gMapPtsProcs[mask & kAllMasks];
++}
++
+ ///////////////////////////////////////////////////////////////////////////////
+ 
+ void SkMatrixPriv::MapHomogeneousPointsWithStride(const SkMatrix& mx, SkPoint3 dst[],
+@@ -1281,6 +1286,11 @@ const SkMatrix::MapXYProc SkMatrix::gMapXYProcs[] = {
+     SkMatrix::Persp_xy,    SkMatrix::Persp_xy
+ };
+ 
++SkMatrix::MapXYProc SkMatrix::GetMapXYProc(TypeMask mask) {
++    SkASSERT((mask & ~kAllMasks) == 0);
++    return gMapXYProcs[mask & kAllMasks];
++}
++
+ ///////////////////////////////////////////////////////////////////////////////
+ #if 0
+ // if its nearly zero (just made up 26, perhaps it should be bigger or smaller)

@@ -115,6 +115,12 @@
   endif()
 
 
+  set(patch_Windows_build_FILE
+    "${skia_FIND_MODULE_DIR}/BUILD.gn__Windows_build.patch"
+  )
+  set(patch_Windows_MSVC_x86_build_FILE
+    "${skia_FIND_MODULE_DIR}/gn__toolchain__BUILD.gn__Windows_MSVC_x86_build.patch"
+  )
   set(patch_for_skia_enable_sksl_FILE
     "${skia_FIND_MODULE_DIR}/src__core__SkRuntimeEffect.cpp__for__skia_enable_sksl.patch"
   )
@@ -127,6 +133,9 @@
   set(patch_git_clone_depth_FILE
     "${skia_FIND_MODULE_DIR}/tools__git-sync-deps__git-clone-depth-1.patch"
   )
+  set(Windows_MSVC_shared_build_FILE
+    "${skia_FIND_MODULE_DIR}/Windows_MSVC_shared_build.patch"
+  )
 
   set(skia_src_patches_STAMP
     "${skia_MAIN_BUILD_DIR}/skia_src_patches.stamp"
@@ -134,11 +143,14 @@
   if(NOT EXISTS ${skia_src_patches_STAMP})
     cmr_print_status("Apply patches for Skia sources")
     execute_process(
+      COMMAND ${GIT_EXECUTABLE} apply ${patch_Windows_build_FILE}
+      COMMAND ${GIT_EXECUTABLE} apply ${patch_Windows_MSVC_x86_build_FILE}
       COMMAND ${GIT_EXECUTABLE} apply ${patch_for_skia_enable_sksl_FILE}
       COMMAND ${GIT_EXECUTABLE} apply ${patch_for_skia_use_sfntly_FILE}
       #COMMAND ${GIT_EXECUTABLE} apply ${patch_deps_as_shared_libraries_FILE}
       #COMMAND ${GIT_EXECUTABLE} apply --reverse ${patch_deps_as_shared_libraries_FILE}
       COMMAND ${GIT_EXECUTABLE} apply ${patch_git_clone_depth_FILE}
+      COMMAND ${GIT_EXECUTABLE} apply ${Windows_MSVC_shared_build_FILE}
       WORKING_DIRECTORY ${skia_SRC_DIR}
     )
     execute_process(
