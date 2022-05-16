@@ -110,41 +110,41 @@ jobs:
 #            runner: "macos-10.15"
 
 
-## === Windows ===
+# === Windows ===
 
-## Windows, MSVC, x64
-#          - target: "Windows_MSVC"
-#            platform: "x64"
-#            compiler: "MSVC"
-#            build_type: "Debug"
-#            lib_linking: "shared"
-#            cmake_generator: "Visual Studio"
-#            runner: "windows-2019"
+# Windows, MSVC, x64
+          - target: "Windows_MSVC"
+            platform: "x64"
+            compiler: "MSVC"
+            build_type: "Debug"
+            lib_linking: "shared"
+            cmake_generator: "Visual Studio"
+            runner: "windows-2019"
 
-#          - target: "Windows_MSVC"
-#            platform: "x64"
-#            compiler: "MSVC"
-#            build_type: "Release"
-#            lib_linking: "static"
-#            cmake_generator: "Visual Studio"
-#            runner: "windows-2019"
+          - target: "Windows_MSVC"
+            platform: "x64"
+            compiler: "MSVC"
+            build_type: "Release"
+            lib_linking: "static"
+            cmake_generator: "Visual Studio"
+            runner: "windows-2019"
 
-## Windows, MSVC, Win32
-#          - target: "Windows_MSVC"
-#            platform: "Win32"
-#            compiler: "MSVC"
-#            build_type: "Debug"
-#            lib_linking: "shared"
-#            cmake_generator: "Visual Studio"
-#            runner: "windows-2019"
+# Windows, MSVC, Win32
+          - target: "Windows_MSVC"
+            platform: "Win32"
+            compiler: "MSVC"
+            build_type: "Debug"
+            lib_linking: "shared"
+            cmake_generator: "Visual Studio"
+            runner: "windows-2019"
 
-#          - target: "Windows_MSVC"
-#            platform: "Win32"
-#            compiler: "MSVC"
-#            build_type: "Release"
-#            lib_linking: "static"
-#            cmake_generator: "Visual Studio"
-#            runner: "windows-2019"
+          - target: "Windows_MSVC"
+            platform: "Win32"
+            compiler: "MSVC"
+            build_type: "Release"
+            lib_linking: "static"
+            cmake_generator: "Visual Studio"
+            runner: "windows-2019"
 
 ## Windows, MSVC, WinXP
 #          - target: "Windows_MSVC"
