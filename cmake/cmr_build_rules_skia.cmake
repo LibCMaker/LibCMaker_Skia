@@ -289,16 +289,18 @@
   #    "--flag3",
   #]
 
-  set(flag_MT_MD_sfx "$<$<CONFIG:Debug>:d>")
-  if(BUILD_SHARED_LIBS)
-    set(flag_MT_MD "/MD${flag_MT_MD_sfx}")
-  else()
-    set(flag_MT_MD "/MT${flag_MT_MD_sfx}")
-  endif()
-  string(APPEND extra_cflags " \"${flag_MT_MD}\",")
+  if(WIN32 AND MSVC)
+    set(flag_MT_MD_sfx "$<$<CONFIG:Debug>:d>")
+    if(BUILD_SHARED_LIBS)
+      set(flag_MT_MD "/MD${flag_MT_MD_sfx}")
+    else()
+      set(flag_MT_MD "/MT${flag_MT_MD_sfx}")
+    endif()
+    string(APPEND extra_cflags " \"${flag_MT_MD}\",")
 
-  if(WIN32 AND MSVC AND (TARGETING_XP_64 OR TARGETING_XP))
-    string(APPEND extra_cflags " \"/D_ATL_XP_TARGETING\",")
+    if(TARGETING_XP_64 OR TARGETING_XP)
+      string(APPEND extra_cflags " \"/D_ATL_XP_TARGETING\",")
+    endif()
   endif()
 
   if(extra_cflags)
