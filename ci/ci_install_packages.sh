@@ -65,4 +65,11 @@ if [[ ${cmr_CI} == "ON" ]]; then
     #fi
   fi
 
+  if [[ ${cmr_HOST_OS} == "macOS" ]] ; then
+    if [[ ! -x "$(command -v ninja)" ]]; then
+      echo "${cmr_ECHO_PREFIX} Install Ninja"
+      brew install ninja --quiet
+    fi
+  fi
+
 fi
