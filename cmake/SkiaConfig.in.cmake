@@ -42,7 +42,7 @@ if(@is_win@)
 endif()
 
 macro(skia_find_library name)
-  if(NOT TARGET ${name})
+  if(NOT TARGET "SkiaInternal_${name}")
     find_library(${name}_LIB
       NAMES "${name}"
       REQUIRED
@@ -55,7 +55,7 @@ macro(skia_find_library name)
 endmacro()
 
 macro(skia_find_library_win name)
-  if(NOT TARGET ${name})
+  if(NOT TARGET "SkiaInternal_${name}")
     find_library(${name}_LIB
       NAMES "${name}.lib"
       PATHS ${_windows_kits_library_dirs}
@@ -69,9 +69,9 @@ macro(skia_find_library_win name)
 endmacro()
 
 macro(skia_find_framework name)
-  if(NOT TARGET ${name})
+  if(NOT TARGET "SkiaInternal_${name}")
     find_library(${name}_LIB
-      NAMES "${name}.framework"
+      NAMES "${name}"
       REQUIRED
     )
     add_library("SkiaInternal_${name}" UNKNOWN IMPORTED)

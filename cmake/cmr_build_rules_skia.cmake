@@ -167,9 +167,10 @@
     cmr_print_error("MSVC compiler version 19.15+ is required.")
   endif()
 
-  if(is_linux OR MINGW)  # TODO: if CMake gen = "Unix Makefiles"
+  if(is_linux OR XCODE OR MINGW)  # TODO: if CMake gen = "Unix Makefiles"
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
-        OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
+        OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
 
       #  ar = "ar"
       #  cc = "cc"
@@ -234,6 +235,9 @@
     # NOTE: https://skia.org/docs/user/build/#highly-recommended-build-with-clang-cl
   endif()
 
+  if((is_mac OR is_ios) AND XCODE AND CMAKE_OSX_SYSROOT)
+    string(APPEND skia_GN_ARGS " xcode_sysroot=\"${CMAKE_OSX_SYSROOT}\"")
+  endif()
 
   find_package(Git 2.17.1 REQUIRED)
   find_package(Python REQUIRED COMPONENTS Interpreter)
@@ -454,13 +458,7 @@
     ${_skia_enable_fontmgr_FontConfigInterface}
   )
 
-  if(is_mac OR is_ios)
-    set(_skia_use_fonthost_mac true)
-  else()
-    set(_skia_use_fonthost_mac false)
-  endif()
-  skia_option(skia_use_fonthost_mac ${_skia_use_fonthost_mac})  # default: is_mac || is_ios
-
+  skia_option(skia_use_fonthost_mac false)  # default: is_mac || is_ios
   skia_option(skia_enable_fontmgr_win false)  # default: is_win
   skia_option(skia_enable_fontmgr_win_gdi false)  # default: is_win && !skia_enable_winuwp
 
@@ -475,14 +473,14 @@
   skia_option(skia_enable_particles true)  # default: true
   skia_option(skia_enable_skshaper true)  # default: true
 
-  if(is_win AND is_component_build AND MSVC)
+  if(is_component_build AND (is_win AND MSVC OR is_mac AND XCODE))
     set(_skia_enable_skottie false)
   else()
     set(_skia_enable_skottie true)
   endif()
   skia_option(skia_enable_skottie ${_skia_enable_skottie})  # default: !(is_win && is_component_build)
 
-  if(is_win AND is_component_build AND MSVC)
+  if(is_component_build AND (is_win AND MSVC OR is_mac AND XCODE))
     set(_skia_enable_svg false)
   else()
     set(_skia_enable_svg true)
@@ -588,6 +586,9 @@
   if(BUILD_SHARED_LIBS)
     set(lib_PFX ${CMAKE_SHARED_LIBRARY_PREFIX})
     set(lib_SFX ${CMAKE_SHARED_LIBRARY_SUFFIX})
+    if(is_mac)
+      set(lib_SFX ".so")
+    endif()
   else()
     set(lib_PFX ${CMAKE_STATIC_LIBRARY_PREFIX})
     set(lib_SFX ${CMAKE_STATIC_LIBRARY_SUFFIX})
