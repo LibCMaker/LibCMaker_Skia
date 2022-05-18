@@ -74,6 +74,15 @@ macro(skia_find_framework name)
       NAMES "${name}"
       REQUIRED
     )
+
+    if(${name}_LIB MATCHES "/([^/]+)\\.framework$")
+      set(${name}_LIB_FW "${${name}_LIB}/${CMAKE_MATCH_1}")
+      if(EXISTS "${${name}_LIB_FW}.tbd")
+        string(APPEND ${name}_LIB_FW ".tbd")
+      endif()
+      set(${name}_LIB "${${name}_LIB_FW}")
+    endif()
+
     add_library("SkiaInternal_${name}" UNKNOWN IMPORTED)
     set_target_properties("SkiaInternal_${name}" PROPERTIES
       IMPORTED_LOCATION "${${name}_LIB}"

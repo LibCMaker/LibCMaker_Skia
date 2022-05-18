@@ -167,7 +167,7 @@
     cmr_print_error("MSVC compiler version 19.15+ is required.")
   endif()
 
-  if(is_linux OR XCODE OR MINGW)  # TODO: if CMake gen = "Unix Makefiles"
+  if(is_linux OR is_mac OR MINGW)  # TODO: if CMake gen = "Unix Makefiles"
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
         OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang"
         OR CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
@@ -473,14 +473,14 @@
   skia_option(skia_enable_particles true)  # default: true
   skia_option(skia_enable_skshaper true)  # default: true
 
-  if(is_component_build AND (is_win AND MSVC OR is_mac AND XCODE))
+  if(is_component_build AND (is_win AND MSVC OR is_mac))
     set(_skia_enable_skottie false)
   else()
     set(_skia_enable_skottie true)
   endif()
   skia_option(skia_enable_skottie ${_skia_enable_skottie})  # default: !(is_win && is_component_build)
 
-  if(is_component_build AND (is_win AND MSVC OR is_mac AND XCODE))
+  if(is_component_build AND (is_win AND MSVC OR is_mac))
     set(_skia_enable_svg false)
   else()
     set(_skia_enable_svg true)
