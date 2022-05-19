@@ -366,13 +366,13 @@ jobs:
 #            cmake_generator: "Ninja"
 #            runner: "windows-2019"
 
-#          - target: "Android_Windows"
-#            platform: "x86_64"
-#            compiler: "Clang"
-#            build_type: "Release"
-#            lib_linking: "static"
-#            cmake_generator: "Ninja"
-#            runner: "windows-2019"
+          - target: "Android_Windows"
+            platform: "x86_64"
+            compiler: "Clang"
+            build_type: "Release"
+            lib_linking: "static"
+            cmake_generator: "Ninja"
+            runner: "windows-2019"
 
 
 ## === iOS ===
