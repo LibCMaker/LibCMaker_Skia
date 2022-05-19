@@ -375,24 +375,24 @@ jobs:
             runner: "windows-2019"
 
 
-## === iOS ===
+# === iOS ===
 
-## iOS, Clang, SIMULATOR64
-#          - target: "iOS"
-#            platform: "SIMULATOR64"
-#            compiler: "AppleClang"
-#            build_type: "Debug"
-#            lib_linking: "shared"
-#            cmake_generator: "Xcode"
-#            runner: "macos-10.15"
+# iOS, Clang, SIMULATOR64
+          - target: "iOS"
+            platform: "SIMULATOR64"
+            compiler: "AppleClang"
+            build_type: "Debug"
+            lib_linking: "shared"
+            cmake_generator: "Xcode"
+            runner: "macos-10.15"
 
-#          - target: "iOS"
-#            platform: "SIMULATOR64"
-#            compiler: "AppleClang"
-#            build_type: "Release"
-#            lib_linking: "static"
-#            cmake_generator: "Xcode"
-#            runner: "macos-10.15"
+          - target: "iOS"
+            platform: "SIMULATOR64"
+            compiler: "AppleClang"
+            build_type: "Release"
+            lib_linking: "static"
+            cmake_generator: "Xcode"
+            runner: "macos-10.15"
 
 
     name: ${{join( matrix.*, ', ' )}}
