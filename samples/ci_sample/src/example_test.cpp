@@ -33,8 +33,70 @@
 
 #include "gtest/gtest.h"
 
+// https://stackoverflow.com/a/5920028
+#if __APPLE__
+    #include <string.h>
+    #include <TargetConditionals.h>
+
+    #if TARGET_IPHONE_SIMULATOR
+      // iOS Simulator
+      #include <CoreFoundation/CFBundle.h>
+    #elif TARGET_OS_IPHONE
+      // iOS device
+    #elif TARGET_OS_MAC
+      // Other kinds of Mac OS
+    #else
+    #   error "Unknown Apple platform"
+    #endif
+#endif
+
+
+// https://stackoverflow.com/a/5920028
+#if __APPLE__
+  //#include <TargetConditionals.h>
+  #if TARGET_IPHONE_SIMULATOR
+    // iOS Simulator
+
+    // https://stackoverflow.com/a/67022872
+    std::string get_resources_dir()
+    {
+      CFURLRef resourceURL = CFBundleCopyResourcesDirectoryURL(CFBundleGetMainBundle());
+      char resourcePath[PATH_MAX];
+
+      if (CFURLGetFileSystemRepresentation(resourceURL, true, (UInt8 *)resourcePath, PATH_MAX))
+      {
+        if (resourceURL != NULL)
+        {
+          CFRelease(resourceURL);
+        }
+        return resourcePath;
+      }
+    }
+  #endif
+#endif  // __APPLE__
+
+
 TEST(Examle, test)
 {
+  std::string resDir;
+  std::string workDir;
+
+  // https://stackoverflow.com/a/5920028
+  #if __APPLE__
+    //#include <TargetConditionals.h>
+    #if TARGET_IPHONE_SIMULATOR
+      // iOS Simulator
+
+      resDir = get_resources_dir() + "/";
+
+      // https://stackoverflow.com/a/39022407
+      // HOME is the home directory of your application
+      // points to the root of your sandbox.
+      std::string homeDir = getenv("HOME");
+      workDir = homeDir + "/Documents/";
+    #endif
+  #endif  // __APPLE__
+
   enum
   {
     BYTES_PER_PIXEL = 4
@@ -117,7 +179,8 @@ TEST(Examle, test)
 
   for (const auto& sample : samples) {
     sk_sp<SkFontMgr> fontMgr = SkFontMgr::RefDefault();
-    sk_sp<SkTypeface> typeface = fontMgr->makeFromFile(sample.font.c_str());
+    std::string fontFile = resDir + sample.font;
+    sk_sp<SkTypeface> typeface = fontMgr->makeFromFile(fontFile.c_str());
 
     std::unique_ptr<SkShaper> shaper = SkShaper::Make(fontMgr);
     //SkShaper::PurgeCaches();  // NOTE: usefull in loop?
@@ -169,11 +232,11 @@ TEST(Examle, test)
 
 
   // Write our picture to file.
-  std::string fileOutTest1 {"Skia_draw.ppm"};
+  std::string fileOutTest1 = workDir + "Skia_draw.ppm";
   writePpmFile(
       frameBuf.data(), frameWidth, frameHeight, BYTES_PER_PIXEL, fileOutTest1);
 
   // Compare our file with prototype.
-  std::string fileTest1 {"Skia_draw_test_sample.ppm"};
+  std::string fileTest1 = resDir + "Skia_draw_test_sample.ppm";
   EXPECT_TRUE(compareFiles(fileTest1, fileOutTest1));
 }

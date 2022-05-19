@@ -1447,6 +1447,16 @@ if(@is_ios@)
     INTERFACE_LINK_LIBRARIES
       SkiaInternal_CoreFoundation
   )
+  skia_find_framework("CoreGraphics")
+  set_property(TARGET Skia::skia APPEND PROPERTY
+    INTERFACE_LINK_LIBRARIES
+      SkiaInternal_CoreGraphics
+  )
+  skia_find_framework("CoreText")
+  set_property(TARGET Skia::skia APPEND PROPERTY
+    INTERFACE_LINK_LIBRARIES
+      SkiaInternal_CoreText
+  )
   skia_find_framework("ImageIO")
   set_property(TARGET Skia::skia APPEND PROPERTY
     INTERFACE_LINK_LIBRARIES

@@ -37,7 +37,7 @@
 
   cmake_policy(PUSH)
 
-  cmake_minimum_required(VERSION 3.22)
+  cmake_minimum_required(VERSION 3.23)
 
   include(GNUInstallDirs)
   include(CheckLanguage)
@@ -235,8 +235,34 @@
     # NOTE: https://skia.org/docs/user/build/#highly-recommended-build-with-clang-cl
   endif()
 
-  if((is_mac OR is_ios) AND XCODE AND CMAKE_OSX_SYSROOT)
-    string(APPEND skia_GN_ARGS " xcode_sysroot=\"${CMAKE_OSX_SYSROOT}\"")
+  if(XCODE)
+    if(is_mac AND CMAKE_OSX_SYSROOT)
+      string(APPEND skia_GN_ARGS " xcode_sysroot=\"${CMAKE_OSX_SYSROOT}\"")
+    endif()
+    if(is_ios AND CMAKE_OSX_SYSROOT_INT)
+      string(APPEND skia_GN_ARGS " xcode_sysroot=\"${CMAKE_OSX_SYSROOT_INT}\"")
+    endif()
+  endif()
+
+  if(is_ios)
+    if(ARCHS STREQUAL "armv7")
+      set(target_cpu "arm")
+    elseif(ARCHS STREQUAL "arm64")
+      set(target_cpu "arm64")
+    elseif(ARCHS STREQUAL "i386")
+      set(target_cpu "x86")
+    elseif(ARCHS STREQUAL "x86_64")
+      set(target_cpu "x64")
+    else()
+      cmr_print_error("Unsupported CPU arch.")
+    endif()
+
+    string(APPEND skia_GN_ARGS " target_cpu=\"${target_cpu}\"")
+
+    # ios_min_target = ""
+    if(DEPLOYMENT_TARGET)
+      string(APPEND skia_GN_ARGS " ios_min_target=\"${DEPLOYMENT_TARGET}\"")
+    endif()
   endif()
 
   find_package(Git 2.17.1 REQUIRED)
@@ -473,14 +499,14 @@
   skia_option(skia_enable_particles true)  # default: true
   skia_option(skia_enable_skshaper true)  # default: true
 
-  if(is_component_build AND (is_win AND MSVC OR is_mac))
+  if(is_component_build AND (is_win AND MSVC OR is_mac OR is_ios))
     set(_skia_enable_skottie false)
   else()
     set(_skia_enable_skottie true)
   endif()
   skia_option(skia_enable_skottie ${_skia_enable_skottie})  # default: !(is_win && is_component_build)
 
-  if(is_component_build AND (is_win AND MSVC OR is_mac))
+  if(is_component_build AND (is_win AND MSVC OR is_mac OR is_ios))
     set(_skia_enable_svg false)
   else()
     set(_skia_enable_svg true)
@@ -586,7 +612,7 @@
   if(BUILD_SHARED_LIBS)
     set(lib_PFX ${CMAKE_SHARED_LIBRARY_PREFIX})
     set(lib_SFX ${CMAKE_SHARED_LIBRARY_SUFFIX})
-    if(is_mac)
+    if(is_mac OR is_ios)
       set(lib_SFX ".so")
     endif()
   else()
