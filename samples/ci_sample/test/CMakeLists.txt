@@ -56,18 +56,19 @@ if(BUILD_TESTING)
     endif()
   endif()
 
-  set(test_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}")
-  if(MSVC OR XCODE)
-    set(test_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
-  endif()
   if(IOS)
     set(test_BIN_DIR
       "${PROJECT_BINARY_DIR}/test/$<CONFIG>-iphonesimulator/${test_NAME}.app"
     )
+  else()
+    set(test_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}")
   endif()
-
   set(font_BIN_DIR "${test_BIN_DIR}")
   set(data_BIN_DIR "${test_BIN_DIR}")
+  if((MSVC OR XCODE) AND NOT IOS)
+    set(test_BIN_DIR "${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>")
+  endif()
+
 
   if(TARGET Skia::icudata)
     get_target_property(icudata_LIB Skia::icudata IMPORTED_LOCATION)
