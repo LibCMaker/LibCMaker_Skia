@@ -1,0 +1,13 @@
+diff --git a/BUILD.gn b/BUILD.gn
+index 22f94f0..94820a0 100644
+--- a/BUILD.gn
++++ b/BUILD.gn
+@@ -1416,6 +1416,8 @@ skia_component("skia") {
+     ]
+     frameworks = [
+       "CoreFoundation.framework",
++      "CoreGraphics.framework",
++      "CoreText.framework",
+       "ImageIO.framework",
+       "MobileCoreServices.framework",
+     ]

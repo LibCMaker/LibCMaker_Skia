@@ -118,6 +118,9 @@
   set(patch_Windows_build_FILE
     "${skia_FIND_MODULE_DIR}/BUILD.gn__Windows_build.patch"
   )
+  set(patch_Fix_iOS_shared_build_FILE
+    "${skia_FIND_MODULE_DIR}/BUILD.gn__Fix_iOS_shared_build.patch"
+  )
   set(patch_Android_iOS_build_FILE
     "${skia_FIND_MODULE_DIR}/BUILD.gn__Android_iOS_build.patch"
   )
@@ -147,6 +150,7 @@
     cmr_print_status("Apply patches for Skia sources")
     execute_process(
       COMMAND ${GIT_EXECUTABLE} apply ${patch_Windows_build_FILE}
+      COMMAND ${GIT_EXECUTABLE} apply ${patch_Fix_iOS_shared_build_FILE}
       COMMAND ${GIT_EXECUTABLE} apply ${patch_Android_iOS_build_FILE}
       COMMAND ${GIT_EXECUTABLE} apply ${patch_Windows_MSVC_x86_build_FILE}
       COMMAND ${GIT_EXECUTABLE} apply ${patch_for_skia_enable_sksl_FILE}
