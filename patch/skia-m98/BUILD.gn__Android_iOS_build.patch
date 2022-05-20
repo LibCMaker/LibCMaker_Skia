@@ -6,7 +6,7 @@ index 22f94f0..10edc42 100644
    }
  }
  
-+if (!is_android || !is_ios) {
++if (!is_android && !is_ios) {
  skia_executable("skia_c_api_example") {
    sources = [ "experimental/c-api-example/skia-c-example.c" ]
    include_dirs = [ "." ]
