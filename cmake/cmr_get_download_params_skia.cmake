@@ -115,56 +115,35 @@
   endif()
 
 
-  set(patch_Windows_build_FILE
-    "${skia_FIND_MODULE_DIR}/BUILD.gn__Windows_build.patch"
-  )
-  set(patch_Fix_iOS_shared_build_FILE
-    "${skia_FIND_MODULE_DIR}/BUILD.gn__Fix_iOS_shared_build.patch"
-  )
-  set(patch_Android_iOS_build_FILE
-    "${skia_FIND_MODULE_DIR}/BUILD.gn__Android_iOS_build.patch"
-  )
-  set(patch_Windows_MSVC_x86_build_FILE
-    "${skia_FIND_MODULE_DIR}/gn__toolchain__BUILD.gn__Windows_MSVC_x86_build.patch"
-  )
-  set(patch_for_skia_enable_sksl_FILE
-    "${skia_FIND_MODULE_DIR}/src__core__SkRuntimeEffect.cpp__for__skia_enable_sksl.patch"
-  )
-  set(patch_for_skia_use_sfntly_FILE
-    "${skia_FIND_MODULE_DIR}/src__pdf__SkPDFSubsetFont.cpp__for__skia_use_sfntly.patch"
-  )
-  set(patch_deps_as_shared_libraries_FILE
-    "${skia_FIND_MODULE_DIR}/third_party_libs_as_shared_libraries.patch"
-  )
-  set(patch_git_clone_depth_FILE
-    "${skia_FIND_MODULE_DIR}/tools__git-sync-deps__git-clone-depth-1.patch"
-  )
-  set(Windows_MSVC_shared_build_FILE
-    "${skia_FIND_MODULE_DIR}/Windows_MSVC_shared_build.patch"
-  )
+  function(apply_skia_source_patch _name)
+    set(${_name}_STAMP
+      "${skia_MAIN_BUILD_DIR}/patch__${_name}__.stamp"
+    )
+    if(NOT EXISTS ${${_name}_STAMP})
+      cmr_print_status("Apply Skia source patch: '${_name}'")
+      set(${_name}_FILE
+        "${skia_FIND_MODULE_DIR}/${_name}"
+      )
+      execute_process(
+        COMMAND ${GIT_EXECUTABLE} apply ${${_name}_FILE}
+        #COMMAND ${GIT_EXECUTABLE} apply --reverse ${${_name}_FILE}
+        WORKING_DIRECTORY ${skia_SRC_DIR}
+      )
+      execute_process(
+        COMMAND ${CMAKE_COMMAND} -E touch ${${_name}_STAMP}
+      )
+    endif()
+  endfunction()
 
-  set(skia_src_patches_STAMP
-    "${skia_MAIN_BUILD_DIR}/skia_src_patches.stamp"
-  )
-  if(NOT EXISTS ${skia_src_patches_STAMP})
-    cmr_print_status("Apply patches for Skia sources")
-    execute_process(
-      COMMAND ${GIT_EXECUTABLE} apply ${patch_Windows_build_FILE}
-      COMMAND ${GIT_EXECUTABLE} apply ${patch_Fix_iOS_shared_build_FILE}
-      COMMAND ${GIT_EXECUTABLE} apply ${patch_Android_iOS_build_FILE}
-      COMMAND ${GIT_EXECUTABLE} apply ${patch_Windows_MSVC_x86_build_FILE}
-      COMMAND ${GIT_EXECUTABLE} apply ${patch_for_skia_enable_sksl_FILE}
-      COMMAND ${GIT_EXECUTABLE} apply ${patch_for_skia_use_sfntly_FILE}
-      #COMMAND ${GIT_EXECUTABLE} apply ${patch_deps_as_shared_libraries_FILE}
-      #COMMAND ${GIT_EXECUTABLE} apply --reverse ${patch_deps_as_shared_libraries_FILE}
-      COMMAND ${GIT_EXECUTABLE} apply ${patch_git_clone_depth_FILE}
-      COMMAND ${GIT_EXECUTABLE} apply ${Windows_MSVC_shared_build_FILE}
-      WORKING_DIRECTORY ${skia_SRC_DIR}
-    )
-    execute_process(
-      COMMAND ${CMAKE_COMMAND} -E touch ${skia_src_patches_STAMP}
-    )
-  endif()
+  #apply_skia_source_patch("Deps__Build_third_party_libs_as_shared.patch")
+  apply_skia_source_patch("GN__Android_iOS__Do_not_build__skia_c_api_example.patch")
+  apply_skia_source_patch("GN__Windows__Fix_MSVC_x86_build.patch")
+  apply_skia_source_patch("GN__Windows__Fix_link_deps.patch")
+  apply_skia_source_patch("GN__iOS__Fix_link_deps.patch")
+  apply_skia_source_patch("Src__Fix_for__skia_enable_sksl.patch")
+  apply_skia_source_patch("Src__Fix_for__skia_use_sfntly.patch")
+  apply_skia_source_patch("Src__Windows__Fix_MSVC_shared_build.patch")
+  apply_skia_source_patch("Tools__Add_depth-1_to_git-clone_for_deps.patch")
 
 
   set(git_sync_deps_STAMP
