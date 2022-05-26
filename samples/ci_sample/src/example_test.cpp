@@ -97,6 +97,12 @@ TEST(Examle, test)
     #endif
   #endif  // __APPLE__
 
+  #if defined(_WIN32) || defined(WIN32)
+    const char PATH_SEPARATOR = '\\';
+  #else
+    const char PATH_SEPARATOR = '/';
+  #endif
+
   enum
   {
     BYTES_PER_PIXEL = 4
@@ -179,7 +185,7 @@ TEST(Examle, test)
 
   for (const auto& sample : samples) {
     sk_sp<SkFontMgr> fontMgr = SkFontMgr::RefDefault();
-    std::string fontFile = resDir + sample.font;
+    std::string fontFile = resDir + "fonts" + PATH_SEPARATOR + sample.font;
     sk_sp<SkTypeface> typeface = fontMgr->makeFromFile(fontFile.c_str());
 
     std::unique_ptr<SkShaper> shaper = SkShaper::Make(fontMgr);
@@ -237,6 +243,7 @@ TEST(Examle, test)
       frameBuf.data(), frameWidth, frameHeight, BYTES_PER_PIXEL, fileOutTest1);
 
   // Compare our file with prototype.
-  std::string fileTest1 = resDir + "Skia_draw_test_sample.ppm";
+  std::string fileTest1 =
+      resDir + "data" + PATH_SEPARATOR + "Skia_draw_test_sample.ppm";
   EXPECT_TRUE(compareFiles(fileTest1, fileOutTest1));
 }
