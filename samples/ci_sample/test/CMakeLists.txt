@@ -23,7 +23,9 @@
 
 # Testing with Google Test.
 if(BUILD_TESTING)
-  cmr_common_sample_test_1_part()
+  #cmr_common_test_part()
+  cmr_common_test_part__set_test_name()
+  cmr_common_test_part__add_executable()
 
 
   #-----------------------------------------------------------------------
@@ -148,6 +150,40 @@ if(BUILD_TESTING)
   )
 
 
+  cmr_common_test_part__android__init()
+  cmr_common_test_part__android__push_shared_libs()
+  #cmr_common_test_part__android__push_test_exe()
+
+
+  if(ANDROID)
+    #add_test(NAME push_fonts
+    #  COMMAND ${adb_exec} push "${font_BIN_DIR}" "${TEST_WORK_DIR}/fonts"
+    #)
+    #add_test(NAME push_data
+    #  COMMAND ${adb_exec} push "${data_BIN_DIR}" "${TEST_WORK_DIR}/data"
+    #)
+    add_test(NAME push_bin_dir_with_test_data
+      COMMAND ${adb_exec} push "${test_BIN_DIR}" "${TEST_WORK_DIR}"
+    )
+  endif()
+
+
+  cmr_common_test_part__android__run_test()
+
+
+  if(ANDROID)
+    add_test(NAME pull_test_result
+      COMMAND ${adb_exec} pull
+        "${TEST_WORK_DIR}/Skia_draw.ppm"
+        "${CMAKE_CURRENT_BINARY_DIR}/Skia_draw.ppm"
+    )
+  endif()
+
+
+  cmr_common_test_part__ios()
+  cmr_common_test_part__set_common_tests_properties()
+
+
   #-----------------------------------------------------------------------
   # Test sources
   #-----------------------------------------------------------------------
@@ -166,103 +202,4 @@ if(BUILD_TESTING)
   target_link_libraries(${test_NAME} PRIVATE
     Skia::skshaper Skia::skunicode Skia::skia
   )
-
-
-  cmr_common_sample_test_2_part_2()
-
-
-  #-----------------------------------------------------------------------
-  # Run tests for Android
-  #-----------------------------------------------------------------------
-
-  if(ANDROID)
-    find_program(adb_exec adb)
-    if(NOT adb_exec)
-      message(FATAL_ERROR "Could not find 'adb'")
-    endif()
-
-    set(TEST_WORK_DIR "/data/local/tmp/test_test")
-
-    add_test(NAME rm_work_dir
-      COMMAND ${adb_exec} shell "if [ -d \"${TEST_WORK_DIR}\" ] ; then rm -r \"${TEST_WORK_DIR}\" ; fi"
-    )
-
-    #add_test(NAME push_fonts
-    #  COMMAND ${adb_exec} push "${font_BIN_DIR}" "${TEST_WORK_DIR}/fonts"
-    #)
-    #add_test(NAME push_data
-    #  COMMAND ${adb_exec} push "${data_BIN_DIR}" "${TEST_WORK_DIR}/data"
-    #)
-    add_test(NAME push_bin_dir_with_test_data
-      COMMAND ${adb_exec} push "${test_BIN_DIR}" "${TEST_WORK_DIR}"
-    )
-
-    if(BUILD_SHARED_LIBS)
-      add_test(NAME check_tar
-        COMMAND ${adb_exec} shell tar --help
-      )
-      set_tests_properties(check_tar PROPERTIES
-        PASS_REGULAR_EXPRESSION "usage: tar"
-      )
-      set_tests_properties(check_tar PROPERTIES
-        FAIL_REGULAR_EXPRESSION "tar: not found"
-      )
-
-      # Fix for the adb error on the arm devices if use the adb push
-      # for the directory with the soft symlinks:
-      # adb: error: failed to copy '<soft symlink>' to '/data/local/tmp/<soft symlink>': remote symlink failed: Permission denied
-      # Instead of the direct using of the adb push use tar.
-      execute_process(
-        COMMAND ${CMAKE_COMMAND} -E tar cf
-          "${CMAKE_CURRENT_BINARY_DIR}/lib.tar"
-          "${cmr_INSTALL_DIR}/lib"
-        WORKING_DIRECTORY "${cmr_INSTALL_DIR}"
-      )
-      add_test(NAME push_libs_tar
-        COMMAND ${adb_exec} push
-          "${CMAKE_CURRENT_BINARY_DIR}/lib.tar"
-          "${TEST_WORK_DIR}/lib.tar"
-      )
-      add_test(NAME extract_libs_tar
-        COMMAND ${adb_exec} shell tar --no-same-owner
-          -xf "${TEST_WORK_DIR}/lib.tar"
-          -C "${TEST_WORK_DIR}"
-      )
-
-      find_library(cpp_shared_LIB "c++_shared")
-      if(NOT cpp_shared_LIB)
-        message(FATAL_ERROR "The library 'c++_shared' can not be found.")
-      endif()
-
-      get_filename_component(cpp_shared_LIB_FILE_NAME ${cpp_shared_LIB} NAME)
-
-      add_test(NAME push_cpp_shared
-        COMMAND ${adb_exec} push
-          "${cpp_shared_LIB}"
-          "${TEST_WORK_DIR}/lib/${cpp_shared_LIB_FILE_NAME}"
-      )
-    endif()
-
-    #add_test(NAME push_${test_NAME}
-    #  COMMAND ${adb_exec} push ${test_NAME} "${TEST_WORK_DIR}/${test_NAME}"
-    #)
-    add_test(NAME chmod_${test_NAME}
-      COMMAND ${adb_exec} shell chmod 775 "${TEST_WORK_DIR}/${test_NAME}"
-    )
-    add_test(NAME ${test_NAME} COMMAND ${adb_exec} shell
-      "cd ${TEST_WORK_DIR} && "
-      "LD_LIBRARY_PATH=${TEST_WORK_DIR}/lib ${TEST_WORK_DIR}/${test_NAME}"
-      # :${LD_LIBRARY_PATH} || :/vendor/lib64:/system/lib64
-    )
-
-    add_test(NAME pull_test_result_11
-      COMMAND ${adb_exec} pull
-        "${TEST_WORK_DIR}/Skia_draw.ppm"
-        "${CMAKE_CURRENT_BINARY_DIR}/Skia_draw.ppm"
-    )
-  endif()
-
-
-  cmr_common_sample_test_2_part_4()
-  cmr_common_sample_test_2_part_5()
 endif()

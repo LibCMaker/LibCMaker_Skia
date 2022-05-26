@@ -29,18 +29,18 @@ cmr_get_cmake_min_ver()
 cmake_minimum_required(VERSION ${cmr_CMAKE_MIN_VER})
 
 include("${LibCMaker_DIR}/samples/cmr_samples_common_macros.cmake")
-cmr_common_sample_0_part()
+cmr_common_sample_part__before_project()
 
 project(LibCMaker_Skia_Compile_Test CXX)
 
+cmr_common_sample_part__project_settings()
+
 
 #-----------------------------------------------------------------------
-# Common sample 1st part
+# Common sample part
 #-----------------------------------------------------------------------
 
-cmr_common_sample_1_part()
-
-#cmr_common_sample_2_part()
+#cmr_common_sample_part__add_executable()
 
 
 #-----------------------------------------------------------------------
@@ -71,13 +71,6 @@ include(${LibCMaker_LIB_DIR}/LibCMaker_Skia/cmr_build_skia.cmake)
 #target_link_libraries(${PROJECT_NAME} PRIVATE
 #  Skia::skshaper Skia::skunicode Skia::skia
 #)
-
-
-#-----------------------------------------------------------------------
-# Common sample 2nd part
-#-----------------------------------------------------------------------
-
-#cmr_common_sample_3_part()
 
 
 #-----------------------------------------------------------------------
