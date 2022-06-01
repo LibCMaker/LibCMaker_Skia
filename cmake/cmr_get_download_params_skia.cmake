@@ -25,6 +25,23 @@
 
   include(cmr_printers)
 
+  macro(skia_cmr_option _option _value)
+    if(${_value})
+      set(_opt_value "true")
+    else()
+      set(_opt_value "false")
+    endif()
+    set(${_option} "${_opt_value}" CACHE STRING "${_option}")
+    unset(_opt_value)
+  endmacro()
+
+
+  #-----------------------------------------------------------------------
+  # LibCMaker options
+  #
+  skia_cmr_option(export_icu_from_skia true)
+
+
   if(version VERSION_EQUAL "98")
     set(arch_file_sha "NOT_USED")
     # Commit date is Fri Jan 07 23:44:16 2022.
@@ -135,7 +152,6 @@
     endif()
   endfunction()
 
-  #apply_skia_source_patch("Deps__Build_third_party_libs_as_shared.patch")
   apply_skia_source_patch("GN__Android_iOS__Do_not_build__skia_c_api_example.patch")
   apply_skia_source_patch("GN__Windows__Fix_MSVC_x86_build.patch")
   apply_skia_source_patch("GN__Windows__Fix_link_deps.patch")
@@ -145,6 +161,9 @@
   apply_skia_source_patch("Src__Windows__Fix_MSVC_shared_build.patch")
   apply_skia_source_patch("Tools__Add_depth-1_to_git-clone_for_deps.patch")
 
+  if(export_icu_from_skia)
+    apply_skia_source_patch("GN__export_icu_from_skia.patch")
+  endif()
 
   set(git_sync_deps_STAMP
     "${skia_MAIN_BUILD_DIR}/tools__git-sync-deps.stamp"

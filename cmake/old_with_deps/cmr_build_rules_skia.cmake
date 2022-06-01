@@ -371,12 +371,6 @@
 
 
   #-----------------------------------------------------------------------
-  # LibCMaker options
-  #
-  skia_option(export_icu_from_skia true)
-
-
-  #-----------------------------------------------------------------------
   # Skia GN options
   #
   skia_not(is_win is_not_win)
@@ -637,12 +631,27 @@
     "$<IF:$<AND:$<BOOL:${is_win}>,$<BOOL:${BUILD_SHARED_LIBS}>>,${skia_INSTALL_BIN_DIR},${skia_INSTALL_LIB_DIR}>"
   )
 
+  set(brotli_FILE_NAME "${lib_PFX}brotli${lib_SFX}")
+  set(dng_sdk_FILE_NAME "${lib_PFX}dng_sdk${lib_SFX}")
+  set(expat_FILE_NAME "${lib_PFX}expat${lib_SFX}")
+  set(freetype2_FILE_NAME "${lib_PFX}freetype2${lib_SFX}")
+  set(harfbuzz_FILE_NAME "${lib_PFX}harfbuzz${lib_SFX}")
   set(icu_FILE_NAME "${lib_PFX}icu${lib_SFX}")
   # icudtl.dat
   # TODO: icudata_FILE_NAME
   # TODO: generator expr (if android, android_small, cast, common, ios in <skia/third_party/externals/icu>) for icudtb.dat and icudtl_extra.dat
   set(icudata_FILE_NAME "icudtl.dat")
-
+  set(libjpeg_FILE_NAME "libjpeg${lib_SFX}")
+  set(libpng_FILE_NAME "libpng${lib_SFX}")
+  set(libwebp_FILE_NAME "libwebp${lib_SFX}")
+  set(libwebp_sse41_FILE_NAME "libwebp_sse41${lib_SFX}")
+  set(piex_FILE_NAME "${lib_PFX}piex${lib_SFX}")
+  set(sfntly_FILE_NAME "${lib_PFX}sfntly${lib_SFX}")
+  set(spirv_cross_FILE_NAME "${lib_PFX}spirv_cross${lib_SFX}")
+  set(zlib_FILE_NAME "${lib_PFX}zlib${lib_SFX}")
+  set(compression_utils_portable_FILE_NAME
+    "${lib_PFX}compression_utils_portable${lib_SFX}"
+  )
   set(pathkit_FILE_NAME "${lib_PFX}pathkit${lib_SFX}")
   set(video_decoder_FILE_NAME "${lib_PFX}video_decoder${lib_SFX}")
   set(video_encoder_FILE_NAME "${lib_PFX}video_encoder${lib_SFX}")
@@ -675,6 +684,69 @@
 
 
   # -------------------------------------
+  # third_party/brotli/BUILD.gn
+  # -------------------------------------
+  # The only consumer of brotli is freetype and it only needs to decode brotli.
+  if(NOT is_component_build AND skia_use_freetype_woff2)
+    install(
+      FILES "${skia_BUILD_DIR}/${brotli_FILE_NAME}"
+      DESTINATION "${skia_INSTALL_LIB_DIR}"
+    )
+  endif()
+
+
+  # -------------------------------------
+  # third_party/cpu-features/BUILD.gn
+  # -------------------------------------
+
+
+  # -------------------------------------
+  # third_party/dng_sdk/BUILD.gn
+  # -------------------------------------
+  if(NOT is_component_build AND skia_use_dng_sdk)
+    install(
+      FILES "${skia_BUILD_DIR}/${dng_sdk_FILE_NAME}"
+      DESTINATION "${skia_INSTALL_LIB_DIR}"
+    )
+  endif()
+
+
+  # -------------------------------------
+  # third_party/expat/BUILD.gn
+  # -------------------------------------
+  if(NOT is_component_build AND skia_use_expat AND NOT skia_use_system_expat)
+    install(
+      FILES "${skia_BUILD_DIR}/${expat_FILE_NAME}"
+      DESTINATION "${skia_INSTALL_LIB_DIR}"
+    )
+  endif()
+
+
+  # -------------------------------------
+  # third_party/freetype2/BUILD.gn
+  # -------------------------------------
+  if(NOT is_component_build
+      AND skia_use_freetype AND NOT skia_use_system_freetype2)
+    install(
+      FILES "${skia_BUILD_DIR}/${freetype2_FILE_NAME}"
+      DESTINATION "${skia_INSTALL_LIB_DIR}"
+    )
+  endif()
+
+
+  # -------------------------------------
+  # third_party/harfbuzz/BUILD.gn
+  # -------------------------------------
+  if(NOT is_component_build
+      AND skia_use_harfbuzz AND NOT skia_use_system_harfbuzz)
+    install(
+      FILES "${skia_BUILD_DIR}/${harfbuzz_FILE_NAME}"
+      DESTINATION "${skia_INSTALL_LIB_DIR}"
+    )
+  endif()
+
+
+  # -------------------------------------
   # third_party/icu/BUILD.gn
   # -------------------------------------
   if(skia_use_icu AND NOT skia_use_system_icu)
@@ -683,22 +755,110 @@
         "${skia_BUILD_DIR}/${icudata_FILE_NAME}"
       DESTINATION "${skia_INSTALL_DLL_DIR}"
     )
-    if(export_icu_from_skia)
+    if(NOT is_component_build)
       install(
-        DIRECTORY
-          "${skia_SRC_DIR}/third_party/externals/icu/source/common/unicode"
-          "${skia_SRC_DIR}/third_party/externals/icu/source/i18n/unicode"
-        DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
-        FILES_MATCHING PATTERN "*.h"
+        FILES
+          "${skia_BUILD_DIR}/${icu_FILE_NAME}"
+        DESTINATION "${skia_INSTALL_LIB_DIR}"
       )
-      if(is_component_build)
-        install(
-          FILES
-            "${skia_BUILD_DIR}/${icu_FILE_NAME}"
-          DESTINATION "${skia_INSTALL_DLL_DIR}"
-        )
-      endif()
     endif()
+  endif()
+
+
+  # -------------------------------------
+  # third_party/libjpeg-turbo/BUILD.gn
+  # -------------------------------------
+  # TODO:
+  #if(skia_use_libjpeg_turbo_decode OR skia_use_libjpeg_turbo_encode AND
+  #    NOT skia_use_system_libjpeg_turbo AND NOT is_component_build)
+  if(NOT is_component_build AND NOT skia_use_system_libjpeg_turbo)
+    install(
+      FILES "${skia_BUILD_DIR}/${libjpeg_FILE_NAME}"
+      DESTINATION "${skia_INSTALL_LIB_DIR}"
+    )
+  endif()
+
+
+  # -------------------------------------
+  # third_party/libpng/BUILD.gn
+  # -------------------------------------
+  # TODO:
+  #if(skia_use_libpng_decode OR skia_use_libpng_encode AND
+  #    NOT skia_use_system_libpng AND NOT is_component_build)
+  if(NOT is_component_build AND NOT skia_use_system_libpng)
+    install(
+      FILES "${skia_BUILD_DIR}/${libpng_FILE_NAME}"
+      DESTINATION "${skia_INSTALL_LIB_DIR}"
+    )
+  endif()
+
+
+  # -------------------------------------
+  # third_party/libwebp/BUILD.gn
+  # -------------------------------------
+  # TODO:
+  #if(skia_use_libwebp_decode OR skia_use_libwebp_encode AND
+  #    NOT skia_use_system_libwebp AND NOT is_component_build)
+  if(NOT is_component_build AND NOT skia_use_system_libwebp)
+    install(
+      FILES
+        "${skia_BUILD_DIR}/${libwebp_FILE_NAME}"
+        "${skia_BUILD_DIR}/${libwebp_sse41_FILE_NAME}"
+      DESTINATION "${skia_INSTALL_LIB_DIR}"
+    )
+  endif()
+
+
+  # -------------------------------------
+  # third_party/piex/BUILD.gn
+  # -------------------------------------
+  if(NOT is_component_build AND skia_use_piex)
+    install(
+      FILES "${skia_BUILD_DIR}/${piex_FILE_NAME}"
+      DESTINATION "${skia_INSTALL_LIB_DIR}"
+    )
+  endif()
+
+
+  # -------------------------------------
+  # third_party/sfntly/BUILD.gn
+  # -------------------------------------
+  if(NOT is_component_build
+      AND skia_use_zlib AND skia_enable_pdf AND skia_use_icu
+      AND NOT skia_use_harfbuzz AND skia_use_sfntly)
+    install(
+      FILES "${skia_BUILD_DIR}/${sfntly_FILE_NAME}"
+      DESTINATION "${skia_INSTALL_LIB_DIR}"
+    )
+  endif()
+
+
+  # -------------------------------------
+  # third_party/spirv-cross/BUILD.gn
+  # -------------------------------------
+  if(NOT is_component_build AND skia_enable_gpu AND skia_use_direct3d)
+    install(
+      FILES "${skia_BUILD_DIR}/${spirv_cross_FILE_NAME}"
+      DESTINATION "${skia_INSTALL_LIB_DIR}"
+    )
+  endif()
+
+
+  # -------------------------------------
+  # third_party/zlib/BUILD.gn
+  # -------------------------------------
+  if(NOT is_component_build AND skia_use_zlib)
+    if(NOT skia_use_system_zlib)
+      install(
+        FILES "${skia_BUILD_DIR}/${zlib_FILE_NAME}"
+        DESTINATION "${skia_INSTALL_LIB_DIR}"
+      )
+    endif()
+
+    install(
+      FILES "${skia_BUILD_DIR}/${compression_utils_portable_FILE_NAME}"
+      DESTINATION "${skia_INSTALL_LIB_DIR}"
+    )
   endif()
 
 
@@ -1073,7 +1233,6 @@
     "${skia_CMAKE_GEN_DIR}/SkiaConfig.gen.cmake"
     INSTALL_DESTINATION "${skia_INSTALL_LIB_DIR}/cmake/Skia"
     PATH_VARS
-      CMAKE_INSTALL_INCLUDEDIR
       skia_INSTALL_INCLUDE_DIR
       skia_INSTALL_EXPERIMENTAL_DIR
       skia_INSTALL_MODULES_DIR

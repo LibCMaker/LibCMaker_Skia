@@ -209,4 +209,17 @@ if(BUILD_TESTING)
   target_link_libraries(${test_NAME} PRIVATE
     Skia::skshaper Skia::skunicode Skia::skia
   )
+
+  if(export_icu_from_skia)
+    target_sources(${test_NAME}
+      PRIVATE
+        ${test_src_DIR}/uprint.c
+    )
+
+    # ICU
+    #target_link_libraries(${test_NAME} PRIVATE ICU::i18n ICU::uc ICU::data)
+    target_link_libraries(${test_NAME} PRIVATE ICU::ICU)
+    # ICU is C++ library.
+    #set_target_properties(${test_NAME} PROPERTIES LINKER_LANGUAGE CXX)
+  endif()
 endif()

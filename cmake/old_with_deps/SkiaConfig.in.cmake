@@ -15,7 +15,6 @@
 set(lib_PFX "@lib_PFX@")
 set(lib_SFX "@lib_SFX@")
 
-set(cmake_INCLUDE_DIR "@PACKAGE_CMAKE_INSTALL_INCLUDEDIR@")
 set(skia_INCLUDE_DIR "@PACKAGE_skia_INSTALL_INCLUDE_DIR@")
 set(skia_EXPERIMENTAL_DIR "@PACKAGE_skia_INSTALL_EXPERIMENTAL_DIR@")
 set(skia_MODULES_DIR "@PACKAGE_skia_INSTALL_MODULES_DIR@")
@@ -102,6 +101,23 @@ macro(skia_set_target_properties name)
   endif()
 endmacro()
 
+macro(skia_add_interface_link_libraries _target _lib)
+  if(TARGET ${_lib})
+    set_property(TARGET ${_target} APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES ${_lib}
+    )
+  endif()
+endmacro()
+
+macro(skia_add_interface_link_libraries_required _target _lib)
+  if(NOT TARGET ${_lib})
+    message(FATAL_ERROR "Target ${_lib} is not exist.")
+  endif()
+  set_property(TARGET ${_target} APPEND PROPERTY
+    INTERFACE_LINK_LIBRARIES ${_lib}
+  )
+endmacro()
+
 macro(skia_set_imported_location _target _type _path)
   add_library(${_target}_imported ${_type} IMPORTED)
   set_property(TARGET ${_target}_imported APPEND PROPERTY
@@ -134,6 +150,459 @@ if(@skia_use_fontconfig@)
   )
   skia_set_imported_location(SkiaInternal_fontconfig UNKNOWN
     "${fontconfig_LIB}"
+  )
+endif()
+
+
+# -------------------------------------
+# third_party/brotli/BUILD.gn
+# -------------------------------------
+# The only consumer of brotli is freetype and it only needs to decode brotli.
+add_library(SkiaInternal_brotli INTERFACE)
+
+#if(NOT is_component_build AND skia_use_freetype_woff2)
+if(NOT @is_component_build@ AND @skia_use_freetype_woff2@)
+  skia_set_target_properties(SkiaInternal_brotli)
+  set_and_check(brotli_LIB "${skia_LIB_DIR}/@brotli_FILE_NAME@")
+  skia_set_imported_location(SkiaInternal_brotli STATIC
+    "${brotli_LIB}"
+  )
+endif()
+
+
+# -------------------------------------
+# third_party/cpu-features/BUILD.gn
+# -------------------------------------
+add_library(SkiaInternal_cpu_features INTERFACE)
+
+
+# -------------------------------------
+# third_party/expat/BUILD.gn
+# -------------------------------------
+set(expat_TYPE UNKNOWN)
+
+#if(skia_use_expat)
+if(@skia_use_expat@)
+  #if(skia_use_system_expat)
+  if(@skia_use_system_expat@)
+    find_library(expat_LIB
+      NAMES "expat"
+      REQUIRED
+    )
+  #elseif(NOT is_component_build)
+  elseif(NOT @is_component_build@)
+    set_and_check(expat_LIB "${skia_LIB_DIR}/@expat_FILE_NAME@")
+    set(expat_TYPE STATIC)
+  endif()
+endif()
+
+add_library(SkiaInternal_expat INTERFACE)
+
+#if(skia_use_expat AND expat_LIB)
+if(@skia_use_expat@ AND expat_LIB)
+  #if(NOT skia_use_system_expat)
+  if(NOT @skia_use_system_expat@)
+    skia_set_target_properties(SkiaInternal_expat)
+  endif()
+  skia_set_imported_location(SkiaInternal_expat ${expat_TYPE}
+    "${expat_LIB}"
+  )
+endif()
+
+
+# -------------------------------------
+# third_party/harfbuzz/BUILD.gn
+# -------------------------------------
+set(harfbuzz_TYPE UNKNOWN)
+
+#if(skia_use_harfbuzz)
+if(@skia_use_harfbuzz@)
+  #if(skia_use_system_harfbuzz)
+  if(@skia_use_system_harfbuzz@)
+    find_library(harfbuzz_LIB
+      NAMES "harfbuzz"
+      REQUIRED
+    )
+  #elseif(NOT is_component_build)
+  elseif(NOT @is_component_build@)
+    set_and_check(harfbuzz_LIB "${skia_LIB_DIR}/@harfbuzz_FILE_NAME@")
+    set(harfbuzz_TYPE STATIC)
+  endif()
+endif()
+
+add_library(SkiaInternal_harfbuzz INTERFACE)
+
+#if(skia_use_harfbuzz AND harfbuzz_LIB)
+if(@skia_use_harfbuzz@ AND harfbuzz_LIB)
+  #if(skia_use_system_harfbuzz)
+  if(@skia_use_system_harfbuzz@)
+
+    #if(skia_pdf_subset_harfbuzz)
+    if(@skia_pdf_subset_harfbuzz@)
+      skia_find_library("harfbuzz-subset")
+      set_property(TARGET SkiaInternal_harfbuzz APPEND PROPERTY
+        INTERFACE_LINK_LIBRARIES SkiaInternal_harfbuzz-subset
+      )
+    endif()
+
+  else()
+    skia_set_target_properties(SkiaInternal_harfbuzz)
+  endif()
+
+  skia_set_imported_location(SkiaInternal_harfbuzz ${harfbuzz_TYPE}
+    "${harfbuzz_LIB}"
+  )
+endif()
+
+
+# -------------------------------------
+# third_party/icu/BUILD.gn
+# -------------------------------------
+set(icu_TYPE UNKNOWN)
+
+#if(skia_use_icu)
+if(@skia_use_icu@)
+  #if(skia_use_system_icu)
+  if(@skia_use_system_icu@)
+    find_library(icu_LIB
+      NAMES "icuuc"
+      REQUIRED
+    )
+  else()
+    add_library(Skia::icudata UNKNOWN IMPORTED)
+    set_and_check(icudata_LIB "${skia_DLL_DIR}/@icudata_FILE_NAME@")
+    set_target_properties(Skia::icudata PROPERTIES
+      IMPORTED_LOCATION "${icudata_LIB}"
+      IMPORTED_NO_SONAME ON
+    )
+
+    #if(NOT is_component_build)
+    if(NOT @is_component_build@)
+      set_and_check(icu_LIB "${skia_LIB_DIR}/@icu_FILE_NAME@")
+      set(icu_TYPE STATIC)
+    endif()
+  endif()
+endif()
+
+add_library(SkiaInternal_icu INTERFACE)
+
+#if(skia_use_icu AND icu_LIB)
+if(@skia_use_icu@ AND icu_LIB)
+  #if(NOT skia_use_system_icu)
+  if(NOT @skia_use_system_icu@)
+    skia_set_target_properties(SkiaInternal_icu)
+
+    #if(is_win)
+    if(@is_win@)
+      skia_find_library_win("Advapi32")
+      set_property(TARGET SkiaInternal_icu APPEND PROPERTY
+        INTERFACE_LINK_LIBRARIES SkiaInternal_Advapi32
+      )
+    endif()
+
+  endif()
+
+  skia_set_imported_location(SkiaInternal_icu ${icu_TYPE}
+    "${icu_LIB}"
+  )
+endif()
+
+
+# -------------------------------------
+# third_party/libjpeg-turbo/BUILD.gn
+# -------------------------------------
+set(libjpeg_TYPE UNKNOWN)
+
+# TODO:
+#if(skia_use_libjpeg_turbo_decode OR skia_use_libjpeg_turbo_encode AND
+#    NOT skia_use_system_libjpeg_turbo NOT is_component_build)
+
+#if(skia_use_system_libjpeg_turbo)
+if(@skia_use_system_libjpeg_turbo@)
+  find_library(libjpeg_LIB
+    NAMES "jpeg"
+    REQUIRED
+  )
+#elseif(NOT is_component_build)
+elseif(NOT @is_component_build@)
+  set_and_check(libjpeg_LIB "${skia_LIB_DIR}/@libjpeg_FILE_NAME@")
+  set(libjpeg_TYPE STATIC)
+endif()
+
+add_library(SkiaInternal_libjpeg INTERFACE)
+
+if(libjpeg_LIB)
+  #if(NOT skia_use_system_libjpeg_turbo)
+  if(NOT @skia_use_system_libjpeg_turbo@)
+    skia_set_target_properties(SkiaInternal_libjpeg)
+  endif()
+  skia_set_imported_location(SkiaInternal_libjpeg ${libjpeg_TYPE}
+    "${libjpeg_LIB}"
+  )
+endif()
+
+
+# -------------------------------------
+# third_party/piex/BUILD.gn
+# -------------------------------------
+add_library(SkiaInternal_piex INTERFACE)
+
+#if(skia_use_piex AND NOT is_component_build)
+if(@skia_use_piex@ AND NOT @is_component_build@)
+  skia_set_target_properties(SkiaInternal_piex)
+  set_and_check(piex_LIB "${skia_LIB_DIR}/@piex_FILE_NAME@")
+  skia_set_imported_location(SkiaInternal_piex STATIC
+    "${piex_LIB}"
+  )
+endif()
+
+
+# -------------------------------------
+# third_party/spirv-cross/BUILD.gn
+# -------------------------------------
+add_library(SkiaInternal_spirv_cross INTERFACE)
+
+#if(NOT is_component_build AND skia_enable_gpu AND skia_use_direct3d)
+if(NOT @is_component_build@ AND @skia_enable_gpu@ AND @skia_use_direct3d@)
+  skia_set_target_properties(SkiaInternal_spirv_cross)
+  set_and_check(spirv_cross_LIB "${skia_LIB_DIR}/@spirv_cross_FILE_NAME@")
+  skia_set_imported_location(SkiaInternal_spirv_cross STATIC
+    "${spirv_cross_LIB}"
+  )
+endif()
+
+
+# -------------------------------------
+# third_party/zlib/BUILD.gn
+# -------------------------------------
+set(zlib_TYPE UNKNOWN)
+
+#if(skia_use_zlib)
+if(@skia_use_zlib@)
+  #if(skia_use_system_zlib)
+  if(@skia_use_system_zlib@)
+    find_library(zlib_LIB
+      NAMES "z"
+      REQUIRED
+    )
+  #elseif(NOT is_component_build)
+  elseif(NOT @is_component_build@)
+    set_and_check(zlib_LIB "${skia_LIB_DIR}/@zlib_FILE_NAME@")
+    set(zlib_TYPE STATIC)
+  endif()
+endif()
+
+add_library(SkiaInternal_zlib INTERFACE)
+
+#if(skia_use_zlib AND zlib_LIB)
+if(@skia_use_zlib@ AND zlib_LIB)
+  #if(NOT skia_use_system_zlib)
+  if(NOT @skia_use_system_zlib@)
+    skia_set_target_properties(SkiaInternal_zlib)
+    #if(is_android)
+    if(@is_android@)
+      set_property(TARGET SkiaInternal_zlib APPEND PROPERTY
+        INTERFACE_LINK_LIBRARIES SkiaInternal_cpu_features
+      )
+    endif()
+  endif()
+  skia_set_imported_location(SkiaInternal_zlib ${zlib_TYPE}
+    "${zlib_LIB}"
+  )
+endif()
+
+add_library(SkiaInternal_compression_utils_portable INTERFACE)
+
+#if(skia_use_zlib AND NOT is_component_build)
+if(@skia_use_zlib@ AND NOT @is_component_build@)
+  skia_set_target_properties(SkiaInternal_compression_utils_portable)
+  set_and_check(compression_utils_portable_LIB
+    "${skia_LIB_DIR}/@compression_utils_portable_FILE_NAME@"
+  )
+  set_property(TARGET SkiaInternal_compression_utils_portable APPEND PROPERTY
+    INTERFACE_LINK_LIBRARIES SkiaInternal_zlib  # either system or from source
+  )
+  skia_set_imported_location(SkiaInternal_compression_utils_portable STATIC
+    "${compression_utils_portable_LIB}"
+  )
+endif()
+
+
+# -------------------------------------
+# third_party/dng_sdk/BUILD.gn
+# -------------------------------------
+add_library(SkiaInternal_dng_sdk INTERFACE)
+
+#if(NOT is_component_build AND skia_use_dng_sdk)
+if(NOT @is_component_build@ AND @skia_use_dng_sdk@)
+  skia_set_target_properties(SkiaInternal_dng_sdk)
+  set_and_check(dng_sdk_LIB "${skia_LIB_DIR}/@dng_sdk_FILE_NAME@")
+  set_property(TARGET SkiaInternal_dng_sdk APPEND PROPERTY
+    INTERFACE_LINK_LIBRARIES SkiaInternal_libjpeg SkiaInternal_zlib
+  )
+  skia_set_imported_location(SkiaInternal_dng_sdk STATIC
+    "${dng_sdk_LIB}"
+  )
+endif()
+
+
+# -------------------------------------
+# third_party/libpng/BUILD.gn
+# -------------------------------------
+set(libpng_TYPE UNKNOWN)
+
+# TODO:
+#if(skia_use_libpng_decode OR skia_use_libpng_encode AND
+#    NOT skia_use_system_libpng NOT is_component_build)
+
+#if(skia_use_system_libpng)
+if(@skia_use_system_libpng@)
+  find_library(libpng_LIB
+    NAMES "png"
+    REQUIRED
+  )
+#elseif(NOT is_component_build)
+elseif(NOT @is_component_build@)
+  set_and_check(libpng_LIB "${skia_LIB_DIR}/@libpng_FILE_NAME@")
+  set(libpng_TYPE STATIC)
+endif()
+
+add_library(SkiaInternal_libpng INTERFACE)
+
+if(libpng_LIB)
+  #if(NOT skia_use_system_libpng)
+  if(NOT @skia_use_system_libpng@)
+    skia_set_target_properties(SkiaInternal_libpng)
+    set_property(TARGET SkiaInternal_libpng APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES SkiaInternal_zlib
+    )
+  endif()
+  skia_set_imported_location(SkiaInternal_libpng ${libpng_TYPE}
+    "${libpng_LIB}"
+  )
+endif()
+
+
+# -------------------------------------
+# third_party/freetype2/BUILD.gn
+# -------------------------------------
+set(freetype2_TYPE UNKNOWN)
+
+#if(skia_use_freetype)
+if(@skia_use_freetype@)
+  #if(skia_use_system_freetype2)
+  if(@skia_use_system_freetype2@)
+    find_library(freetype2_LIB
+      NAMES "freetype"
+      REQUIRED
+    )
+  #elseif(NOT is_component_build)
+  elseif(NOT @is_component_build@)
+    set_and_check(freetype2_LIB "${skia_LIB_DIR}/@freetype2_FILE_NAME@")
+    set(freetype2_TYPE STATIC)
+  endif()
+endif()
+
+add_library(SkiaInternal_freetype2 INTERFACE)
+
+#if(skia_use_freetype)
+if(@skia_use_freetype@ AND freetype2_LIB)
+  #if(NOT skia_use_system_freetype2)
+  if(NOT @skia_use_system_freetype2@)
+    skia_set_target_properties(SkiaInternal_freetype2)
+    set_property(TARGET SkiaInternal_freetype2 APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES SkiaInternal_libpng
+    )
+    #if(skia_use_freetype_woff2)
+    if(@skia_use_freetype_woff2@)
+      set_property(TARGET SkiaInternal_freetype2 APPEND PROPERTY
+        INTERFACE_LINK_LIBRARIES SkiaInternal_brotli
+      )
+    endif()
+  endif()
+  skia_set_imported_location(SkiaInternal_freetype2 ${freetype2_TYPE}
+    "${freetype2_LIB}"
+  )
+endif()
+
+
+# -------------------------------------
+# third_party/libwebp/BUILD.gn
+# -------------------------------------
+set(libwebp_TYPE UNKNOWN)
+
+# TODO:
+#if(skia_use_libwebp_decode OR skia_use_libwebp_encode AND
+#    NOT skia_use_system_libwebp NOT is_component_build)
+
+#if(skia_use_system_libwebp)
+if(@skia_use_system_libwebp@)
+  find_library(libwebp_LIB
+    NAMES "webp"
+    REQUIRED
+  )
+#elseif(NOT is_component_build)
+elseif(NOT @is_component_build@)
+  set_and_check(libwebp_LIB "${skia_LIB_DIR}/@libwebp_FILE_NAME@")
+  set(libwebp_TYPE STATIC)
+endif()
+
+add_library(SkiaInternal_libwebp INTERFACE)
+
+if(libwebp_LIB)
+  #if(skia_use_system_libwebp)
+  if(@skia_use_system_libwebp@)
+    skia_find_library("webpdemux")
+    skia_find_library("webpmux")
+    set_property(TARGET SkiaInternal_libwebp APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES SkiaInternal_webpdemux SkiaInternal_webpmux
+    )
+
+  else()
+    add_library(SkiaInternal_libwebp_sse41 STATIC IMPORTED)
+    skia_set_target_properties(SkiaInternal_libwebp_sse41)
+    set_and_check(libwebp_sse41_LIB "${skia_LIB_DIR}/@libwebp_sse41_FILE_NAME@")
+    set_target_properties(SkiaInternal_libwebp_sse41 PROPERTIES
+      IMPORTED_LOCATION "${libwebp_sse41_LIB}"
+    )
+
+    skia_set_target_properties(SkiaInternal_libwebp)
+    set_property(TARGET SkiaInternal_libwebp APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES SkiaInternal_libwebp_sse41
+    )
+
+    #if(is_android)
+    if(@is_android@)
+      set_property(TARGET SkiaInternal_libwebp APPEND PROPERTY
+        INTERFACE_LINK_LIBRARIES SkiaInternal_cpu_features
+      )
+    endif()
+  endif()
+
+  skia_set_imported_location(SkiaInternal_libwebp ${libwebp_TYPE}
+    "${libwebp_LIB}"
+  )
+endif()
+
+
+# -------------------------------------
+# third_party/sfntly/BUILD.gn
+# -------------------------------------
+add_library(SkiaInternal_sfntly INTERFACE)
+
+#if(NOT is_component_build
+#    AND skia_use_zlib AND skia_enable_pdf AND skia_use_icu
+#    AND NOT skia_use_harfbuzz AND skia_use_sfntly)
+if(NOT @is_component_build@
+    AND @skia_use_zlib@ AND @skia_enable_pdf@ AND @skia_use_icu@
+    AND NOT @skia_use_harfbuzz@ AND @skia_use_sfntly@)
+  skia_set_target_properties(SkiaInternal_sfntly)
+  set_and_check(sfntly_LIB "${skia_LIB_DIR}/@sfntly_FILE_NAME@")
+  set_property(TARGET SkiaInternal_sfntly APPEND PROPERTY
+    INTERFACE_LINK_LIBRARIES SkiaInternal_icu
+  )
+  skia_set_imported_location(SkiaInternal_sfntly STATIC
+    "${sfntly_LIB}"
   )
 endif()
 
@@ -173,7 +642,7 @@ add_library(SkiaInternal_fontmgr_android INTERFACE)
 #if(NOT is_component_build AND skia_enable_fontmgr_android)
 if(NOT @is_component_build@ AND @skia_enable_fontmgr_android@)
   set_property(TARGET SkiaInternal_fontmgr_android APPEND PROPERTY
-    INTERFACE_LINK_LIBRARIES SkiaInternal_typeface_freetype
+    INTERFACE_LINK_LIBRARIES SkiaInternal_typeface_freetype SkiaInternal_expat
   )
 endif()
 
@@ -197,9 +666,7 @@ add_library(SkiaInternal_fontmgr_custom_directory INTERFACE)
 #if(NOT is_component_build AND skia_enable_fontmgr_custom_directory)
 if(NOT @is_component_build@ AND @skia_enable_fontmgr_custom_directory@)
   set_property(TARGET SkiaInternal_fontmgr_custom_directory APPEND PROPERTY
-    INTERFACE_LINK_LIBRARIES
-      SkiaInternal_fontmgr_custom
-      SkiaInternal_typeface_freetype
+    INTERFACE_LINK_LIBRARIES SkiaInternal_fontmgr_custom SkiaInternal_typeface_freetype
   )
 endif()
 
@@ -208,9 +675,7 @@ add_library(SkiaInternal_fontmgr_custom_embedded INTERFACE)
 #if(NOT is_component_build AND skia_enable_fontmgr_custom_embedded)
 if(NOT @is_component_build@ AND @skia_enable_fontmgr_custom_embedded@)
   set_property(TARGET SkiaInternal_fontmgr_custom_embedded APPEND PROPERTY
-    INTERFACE_LINK_LIBRARIES
-      SkiaInternal_fontmgr_custom
-      SkiaInternal_typeface_freetype
+    INTERFACE_LINK_LIBRARIES SkiaInternal_fontmgr_custom SkiaInternal_typeface_freetype
   )
 endif()
 
@@ -219,9 +684,7 @@ add_library(SkiaInternal_fontmgr_custom_empty INTERFACE)
 #if(NOT is_component_build AND skia_enable_fontmgr_custom_empty)
 if(NOT @is_component_build@ AND @skia_enable_fontmgr_custom_empty@)
   set_property(TARGET SkiaInternal_fontmgr_custom_empty APPEND PROPERTY
-    INTERFACE_LINK_LIBRARIES
-      SkiaInternal_fontmgr_custom
-      SkiaInternal_typeface_freetype
+    INTERFACE_LINK_LIBRARIES SkiaInternal_fontmgr_custom SkiaInternal_typeface_freetype
   )
 endif()
 
@@ -374,6 +837,7 @@ if(@skia_enable_gpu@)
       set_property(TARGET SkiaInternal_gpu APPEND PROPERTY
         INTERFACE_LINK_LIBRARIES
           SkiaInternal_d3d12allocator
+          SkiaInternal_spirv_cross
       )
     endif()
 
@@ -472,6 +936,13 @@ endif()
 add_library(SkiaInternal_jpeg_decode INTERFACE)
 #if(skia_use_libjpeg_turbo_decode)
 if(@skia_use_libjpeg_turbo_decode@)
+  #if(NOT is_component_build)
+  if(NOT @is_component_build@)
+    set_property(TARGET SkiaInternal_jpeg_decode APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES SkiaInternal_libjpeg
+    )
+  endif()
+
   set_property(TARGET SkiaInternal_jpeg_decode APPEND PROPERTY
     INTERFACE_COMPILE_DEFINITIONS "SK_CODEC_DECODES_JPEG"
   )
@@ -481,6 +952,13 @@ endif()
 add_library(SkiaInternal_jpeg_encode INTERFACE)
 #if(skia_use_libjpeg_turbo_encode)
 if(@skia_use_libjpeg_turbo_encode@)
+  #if(NOT is_component_build)
+  if(NOT @is_component_build@)
+    set_property(TARGET SkiaInternal_jpeg_encode APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES SkiaInternal_libjpeg
+    )
+  endif()
+
   set_property(TARGET SkiaInternal_jpeg_encode APPEND PROPERTY
     INTERFACE_COMPILE_DEFINITIONS "SK_ENCODE_JPEG"
   )
@@ -543,6 +1021,13 @@ endif()
 add_library(SkiaInternal_pdf INTERFACE)
 #if(skia_use_zlib AND skia_enable_pdf)
 if(@skia_use_zlib@ AND @skia_enable_pdf@)
+  #if(NOT is_component_build)
+  if(NOT @is_component_build@)
+    set_property(TARGET SkiaInternal_pdf APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES SkiaInternal_zlib
+    )
+  endif()
+
   set_property(TARGET SkiaInternal_pdf APPEND PROPERTY
     INTERFACE_COMPILE_DEFINITIONS "SK_SUPPORT_PDF"
   )
@@ -568,12 +1053,26 @@ if(@skia_use_zlib@ AND @skia_enable_pdf@)
   if(@skia_use_icu@)
     #if(skia_use_harfbuzz AND skia_pdf_subset_harfbuzz)
     if(@skia_use_harfbuzz@ AND @skia_pdf_subset_harfbuzz@)
+      #if(NOT is_component_build)
+      if(NOT @is_component_build@)
+        set_property(TARGET SkiaInternal_pdf APPEND PROPERTY
+          INTERFACE_LINK_LIBRARIES SkiaInternal_harfbuzz
+        )
+      endif()
+
       set_property(TARGET SkiaInternal_pdf APPEND PROPERTY
         INTERFACE_COMPILE_DEFINITIONS "SK_PDF_USE_HARFBUZZ_SUBSET"
       )
 
     #elseif(skia_use_sfntly)
     elseif(@skia_use_sfntly@)
+      #if(NOT is_component_build)
+      if(NOT @is_component_build@)
+        set_property(TARGET SkiaInternal_pdf APPEND PROPERTY
+          INTERFACE_LINK_LIBRARIES SkiaInternal_sfntly
+        )
+      endif()
+
       set_property(TARGET SkiaInternal_pdf APPEND PROPERTY
         INTERFACE_COMPILE_DEFINITIONS "SK_PDF_USE_SFNTLY"
       )
@@ -594,6 +1093,13 @@ endif()
 add_library(SkiaInternal_png_decode INTERFACE)
 #if(skia_use_libpng_decode)
 if(@skia_use_libpng_decode@)
+  #if(NOT is_component_build)
+  if(NOT @is_component_build@)
+    set_property(TARGET SkiaInternal_png_decode APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES SkiaInternal_libpng
+    )
+  endif()
+
   set_property(TARGET SkiaInternal_png_decode APPEND PROPERTY
     INTERFACE_COMPILE_DEFINITIONS "SK_CODEC_DECODES_PNG"
   )
@@ -603,6 +1109,13 @@ endif()
 add_library(SkiaInternal_png_encode INTERFACE)
 #if(skia_use_libpng_encode)
 if(@skia_use_libpng_encode@)
+  #if(NOT is_component_build)
+  if(NOT @is_component_build@)
+    set_property(TARGET SkiaInternal_png_encode APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES SkiaInternal_libpng
+    )
+  endif()
+
   set_property(TARGET SkiaInternal_png_encode APPEND PROPERTY
     INTERFACE_COMPILE_DEFINITIONS "SK_ENCODE_PNG"
   )
@@ -612,6 +1125,16 @@ endif()
 add_library(SkiaInternal_raw INTERFACE)
 #if(skia_use_dng_sdk AND skia_use_libjpeg_turbo_decode AND skia_use_piex)
 if(@skia_use_dng_sdk@ AND @skia_use_libjpeg_turbo_decode@ AND @skia_use_piex@)
+  #if(NOT is_component_build)
+  if(NOT @is_component_build@)
+    set_property(TARGET SkiaInternal_raw APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES
+        SkiaInternal_dng_sdk
+        SkiaInternal_libjpeg
+        SkiaInternal_piex
+    )
+  endif()
+
   set_property(TARGET SkiaInternal_raw APPEND PROPERTY
     INTERFACE_COMPILE_DEFINITIONS "SK_CODEC_DECODES_RAW"
   )
@@ -619,11 +1142,24 @@ endif()
 
 # optional("typeface_freetype")
 add_library(SkiaInternal_typeface_freetype INTERFACE)
+#if(skia_use_freetype AND NOT is_component_build)
+if(@skia_use_freetype@ AND NOT @is_component_build@)
+  set_property(TARGET SkiaInternal_typeface_freetype APPEND PROPERTY
+    INTERFACE_LINK_LIBRARIES SkiaInternal_freetype2
+  )
+endif()
 
 # optional("webp_decode")
 add_library(SkiaInternal_webp_decode INTERFACE)
 #if(skia_use_libwebp_decode)
 if(@skia_use_libwebp_decode@)
+  #if(NOT is_component_build)
+  if(NOT @is_component_build@)
+    set_property(TARGET SkiaInternal_webp_decode APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES SkiaInternal_libwebp
+    )
+  endif()
+
   set_property(TARGET SkiaInternal_webp_decode APPEND PROPERTY
     INTERFACE_COMPILE_DEFINITIONS "SK_CODEC_DECODES_WEBP"
   )
@@ -633,6 +1169,13 @@ endif()
 add_library(SkiaInternal_webp_encode INTERFACE)
 #if(skia_use_libwebp_encode)
 if(@skia_use_libwebp_encode@)
+  #if(NOT is_component_build)
+  if(NOT @is_component_build@)
+    set_property(TARGET SkiaInternal_webp_encode APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES SkiaInternal_libwebp
+    )
+  endif()
+
   set_property(TARGET SkiaInternal_webp_encode APPEND PROPERTY
     INTERFACE_COMPILE_DEFINITIONS "SK_ENCODE_WEBP"
   )
@@ -642,6 +1185,13 @@ endif()
 add_library(SkiaInternal_wuffs INTERFACE)
 #if(skia_use_wuffs)
 if(@skia_use_wuffs@)
+  #if(NOT is_component_build)
+  if(NOT @is_component_build@)
+    set_property(TARGET SkiaInternal_wuffs APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES SkiaInternal_libwuffs
+    )
+  endif()
+
   set_property(TARGET SkiaInternal_wuffs APPEND PROPERTY
     INTERFACE_COMPILE_DEFINITIONS "SK_HAS_WUFFS_LIBRARY"
   )
@@ -651,6 +1201,13 @@ endif()
 add_library(SkiaInternal_xml INTERFACE)
 #if(skia_use_expat)
 if(@skia_use_expat@)
+  #if(NOT is_component_build)
+  if(NOT @is_component_build@)
+    set_property(TARGET SkiaInternal_xml APPEND PROPERTY
+      INTERFACE_LINK_LIBRARIES SkiaInternal_expat
+    )
+  endif()
+
   set_property(TARGET SkiaInternal_xml APPEND PROPERTY
     INTERFACE_COMPILE_DEFINITIONS "SK_XML"
   )
@@ -836,6 +1393,10 @@ endif()
 
 #if(is_android)
 if(@is_android@)
+  set_property(TARGET Skia::skia APPEND PROPERTY
+    INTERFACE_LINK_LIBRARIES
+      SkiaInternal_expat
+  )
   skia_find_library("EGL")
   set_property(TARGET Skia::skia APPEND PROPERTY
     INTERFACE_LINK_LIBRARIES
@@ -1039,7 +1600,7 @@ endif()
 # -------------------------------------
 # skia_component("sksg")
 add_library(Skia_sksg INTERFACE)
-add_library(Skia::sksg ALIAS Skia_sksg)
+add_library(Skia::sksg ALIAS Skia_skresources)
 
 #if(skia_enable_skottie)
 if(@skia_enable_skottie@)
@@ -1105,80 +1666,11 @@ if(@skia_use_icu@)
   #if(skia_use_runtime_icu AND (is_android OR is_linux))
   if(@skia_use_runtime_icu@ AND (@is_android@ OR @is_linux@))
     # deps += [ "//third_party/icu:headers" ]
-  endif()
-
-  #if(export_icu_from_skia AND is_component_build)
-  if(@export_icu_from_skia@ AND @is_component_build@)
+  else()
     set_property(TARGET Skia::skunicode APPEND PROPERTY
       INTERFACE_LINK_LIBRARIES
         SkiaInternal_icu
     )
-  endif()
-endif()
-
-
-# -------------------------------------
-# third_party/icu/BUILD.gn
-# -------------------------------------
-#if(skia_use_icu AND NOT skia_use_system_icu)
-if(@skia_use_icu@ AND NOT @skia_use_system_icu@)
-  set_and_check(icudata_LIB "${skia_DLL_DIR}/@icudata_FILE_NAME@")
-  add_library(Skia::icudata UNKNOWN IMPORTED)
-  set_target_properties(Skia::icudata PROPERTIES
-    IMPORTED_LOCATION "${icudata_LIB}"
-    IMPORTED_NO_SONAME ON
-  )
-
-  #if(export_icu_from_skia)
-  if(@export_icu_from_skia@)
-    #if(is_component_build)
-    if(@is_component_build@)
-      set_and_check(icu_LIB "${skia_LIB_DIR}/@icu_FILE_NAME@")
-      add_library(SkiaInternal_icu INTERFACE)
-      add_library(ICU::ICU ALIAS SkiaInternal_icu)
-      skia_set_target_properties(SkiaInternal_icu)
-      skia_set_imported_location(SkiaInternal_icu SHARED
-        "${icu_LIB}"
-      )
-
-      set_property(TARGET SkiaInternal_icu APPEND PROPERTY
-        INTERFACE_INCLUDE_DIRECTORIES "${cmake_INCLUDE_DIR}"
-      )
-
-      set_property(TARGET SkiaInternal_icu APPEND PROPERTY
-        INTERFACE_COMPILE_DEFINITIONS
-          "U_USING_ICU_NAMESPACE=0"
-          "U_DISABLE_RENAMING=0"
-          "U_DISABLE_VERSION_SUFFIX=0"
-      )
-      #if(is_win)
-      if(@is_win@)
-        set_property(TARGET SkiaInternal_icu APPEND PROPERTY
-          INTERFACE_COMPILE_DEFINITIONS "U_NOEXCEPT="
-        )
-      endif()
-
-    elseif(TARGET Skia::skunicode)  # static ICU is in skunicode.
-      add_library(ICU::ICU ALIAS Skia::skunicode)
-
-      set_property(TARGET Skia::skunicode APPEND PROPERTY
-        INTERFACE_INCLUDE_DIRECTORIES "${cmake_INCLUDE_DIR}"
-      )
-
-      set_property(TARGET Skia::skunicode APPEND PROPERTY
-        INTERFACE_COMPILE_DEFINITIONS
-          "U_STATIC_IMPLEMENTATION"
-          "U_USING_ICU_NAMESPACE=0"
-          "U_DISABLE_RENAMING=0"
-          "U_DISABLE_VERSION_SUFFIX=0"
-      )
-      #if(is_win)
-      if(@is_win@)
-        set_property(TARGET Skia::skunicode APPEND PROPERTY
-          INTERFACE_COMPILE_DEFINITIONS "U_NOEXCEPT="
-        )
-      endif()
-    endif()
   endif()
 endif()
 
@@ -1255,7 +1747,7 @@ if(@skia_enable_skshaper@)
   #if(skia_use_icu AND skia_use_harfbuzz)
   if(@skia_use_icu@ AND @skia_use_harfbuzz@)
     set_property(TARGET Skia::skshaper APPEND PROPERTY
-      INTERFACE_LINK_LIBRARIES Skia::skunicode
+      INTERFACE_LINK_LIBRARIES Skia::skunicode SkiaInternal_harfbuzz
     )
   endif()
 endif()

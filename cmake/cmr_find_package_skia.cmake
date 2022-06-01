@@ -29,6 +29,8 @@
 
 ## +++ Common part of the lib_cmaker_<lib_name> function +++
   set(find_LIB_VARS
+    export_icu_from_skia
+
     is_official_build
     is_debug
     is_skia_standalone

@@ -71,6 +71,13 @@ macro(skia_option _option _value)
 endmacro()
 
 
+# LibCMaker options
+
+skia_option(export_icu_from_skia true)  # default: true
+
+
+# Skia options
+
 # TODO:
 #skia_not(is_win is_not_win)
 
