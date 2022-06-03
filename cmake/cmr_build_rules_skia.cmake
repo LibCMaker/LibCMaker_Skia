@@ -637,11 +637,18 @@
     "$<IF:$<AND:$<BOOL:${is_win}>,$<BOOL:${BUILD_SHARED_LIBS}>>,${skia_INSTALL_BIN_DIR},${skia_INSTALL_LIB_DIR}>"
   )
 
-  set(icu_FILE_NAME "${lib_PFX}icu${lib_SFX}")
   # icudtl.dat
   # TODO: icudata_FILE_NAME
   # TODO: generator expr (if android, android_small, cast, common, ios in <skia/third_party/externals/icu>) for icudtb.dat and icudtl_extra.dat
   set(icudata_FILE_NAME "icudtl.dat")
+
+  set(icu_FILE_NAME "${lib_PFX}icu${lib_SFX}")
+  set(icu_DLL_LIB_FILE_NAME "icu.dll.lib")
+  set(icu_DLL_PDB_FILE_NAME "icu.dll.pdb")
+
+  set(icu_common_FILE_NAME "${lib_PFX}icu_common${lib_SFX}")
+  set(icu_common_DLL_LIB_FILE_NAME "icu_common.dll.lib")
+  set(icu_common_DLL_PDB_FILE_NAME "icu_common.dll.pdb")
 
   set(pathkit_FILE_NAME "${lib_PFX}pathkit${lib_SFX}")
   set(video_decoder_FILE_NAME "${lib_PFX}video_decoder${lib_SFX}")
@@ -695,8 +702,23 @@
         install(
           FILES
             "${skia_BUILD_DIR}/${icu_FILE_NAME}"
+            "${skia_BUILD_DIR}/${icu_common_FILE_NAME}"
           DESTINATION "${skia_INSTALL_DLL_DIR}"
         )
+        if(is_win)
+          install(
+            FILES
+              "${skia_BUILD_DIR}/${icu_DLL_LIB_FILE_NAME}"
+              "${skia_BUILD_DIR}/${icu_common_DLL_LIB_FILE_NAME}"
+            DESTINATION "${skia_INSTALL_LIB_DIR}"
+          )
+          install(
+            FILES
+              "$<$<CONFIG:Debug>:${skia_BUILD_DIR}/${icu_DLL_PDB_FILE_NAME}>"
+              "$<$<CONFIG:Debug>:${skia_BUILD_DIR}/${icu_common_DLL_PDB_FILE_NAME}>"
+            DESTINATION "${skia_INSTALL_PDB_DIR}"
+          )
+        endif()
       endif()
     endif()
   endif()

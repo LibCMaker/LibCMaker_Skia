@@ -1,5 +1,5 @@
 diff --git a/third_party/icu/BUILD.gn b/third_party/icu/BUILD.gn
-index 90334dc..01c436d 100644
+index 90334dc..3df9c20 100644
 --- a/third_party/icu/BUILD.gn
 +++ b/third_party/icu/BUILD.gn
 @@ -9,6 +9,7 @@ import("icu.gni")
@@ -10,7 +10,7 @@ index 90334dc..01c436d 100644
  }
  
  if (skia_use_system_icu) {
-@@ -68,7 +69,6 @@ if (skia_use_system_icu) {
+@@ -68,28 +69,23 @@ if (skia_use_system_icu) {
      ]
      public_defines = [
        "U_USING_ICU_NAMESPACE=0",
@@ -18,7 +18,12 @@ index 90334dc..01c436d 100644
      ]
    }
  
-@@ -80,14 +80,12 @@ if (skia_use_system_icu) {
+-  third_party("icu") {
++  third_party("icu_common") {
+     public_include_dirs = [
+       "../externals/icu/source/common",
+-      "../externals/icu/source/i18n",
+       ".",
      ]
      public_defines = [
        "U_USING_ICU_NAMESPACE=0",
@@ -31,23 +36,30 @@ index 90334dc..01c436d 100644
        "U_COMMON_IMPLEMENTATION",
 -      "U_STATIC_IMPLEMENTATION",
        "U_ENABLE_DYLOAD=0",
-       "U_I18N_IMPLEMENTATION",
+-      "U_I18N_IMPLEMENTATION",
  
-@@ -98,6 +96,13 @@ if (skia_use_system_icu) {
+       # If we don't set this to zero, ICU will set it to 600,
+       # which makes Macs set _POSIX_C_SOURCE=200112L,
+@@ -98,18 +94,26 @@ if (skia_use_system_icu) {
        # which makes recent libc++ <ctime> not #include-able with -std=c++17.
        "_XOPEN_SOURCE=0",
      ]
+-    if (target_cpu == "wasm") {
+-      # Tell ICU that we are a 32 bit platform, otherwise,
+-      # double-conversion-utils.h doesn't know how to operate.
+-      defines += [ "__i386__" ]
 +
 +    if (export_icu_from_skia && is_component_build) {
-+      shared_lib = true
-+    } else {
++      link_mode = "shared_library"
++    } else if (!is_component_build) {
++      link_mode = "static_library"
 +      defines += [ "U_STATIC_IMPLEMENTATION" ]
-+    }
+     }
+-    sources = icu_sources
 +
-     if (target_cpu == "wasm") {
-       # Tell ICU that we are a 32 bit platform, otherwise,
-       # double-conversion-utils.h doesn't know how to operate.
-@@ -108,8 +113,12 @@ if (skia_use_system_icu) {
++    sources = common_icu_sources
++
+     if (is_win) {
        deps = [ ":icudata" ]
        public_defines += [
          "U_NOEXCEPT=",
@@ -61,11 +73,76 @@ index 90334dc..01c436d 100644
        libs = [ "Advapi32.lib" ]
        sources += [
          "../externals/icu/source/stubdata/stubdata.cpp",
+@@ -121,6 +125,50 @@ if (skia_use_system_icu) {
+     }
+   }
+ 
++  third_party("icu") {
++    public_include_dirs = [
++      "../externals/icu/source/common",
++      "../externals/icu/source/i18n",
++    ]
++    public_defines = [
++      "U_USING_ICU_NAMESPACE=0",
++    ]
++    configs = [ "//gn/portable:add_rtti" ]
++    defines = [
++      # http://userguide.icu-project.org/howtouseicu
++      "U_I18N_IMPLEMENTATION",
++    ]
++
++    if (export_icu_from_skia && is_component_build) {
++      link_mode = "shared_library"
++    } else if (!is_component_build) {
++      link_mode = "static_library"
++      defines += [ "U_STATIC_IMPLEMENTATION" ]
++    }
++
++    if (target_cpu == "wasm") {
++      # Tell ICU that we are a 32 bit platform, otherwise,
++      # double-conversion-utils.h doesn't know how to operate.
++      defines += [ "__i386__" ]
++    }
++
++    sources = i18n_icu_sources
++
++    public_deps = [
++      ":icu_common",
++    ]
++
++    if (is_win) {
++      public_defines += [
++        "U_NOEXCEPT=",
++      ]
++
++      if (!is_component_build) {
++        public_defines += [ "U_STATIC_IMPLEMENTATION" ]
++      }
++    }
++  }
++
+   copy("icudata") {
+     sources = [ "../externals/icu/common/icudtl.dat" ]
+     outputs = [ "$root_out_dir/icudtl.dat" ]
+diff --git a/third_party/icu/SkLoadICU.h b/third_party/icu/SkLoadICU.h
+index 00de51e..9467c2d 100644
+--- a/third_party/icu/SkLoadICU.h
++++ b/third_party/icu/SkLoadICU.h
+@@ -8,7 +8,8 @@
+ #define load_icu_DEFINED
+ 
+ #if defined(_WIN32) && defined(SK_USING_THIRD_PARTY_ICU)
+-bool SkLoadICU();
++#include "unicode/utypes.h"
++U_COMMON_API bool SkLoadICU();
+ #else
+ static inline bool SkLoadICU() { return true; }
+ #endif  // defined(_WIN32) && defined(SK_USING_THIRD_PARTY_ICU)
 diff --git a/third_party/icu/icu.gni b/third_party/icu/icu.gni
-index 3af3281..15033f1 100644
+index 3af3281..18c05c6 100644
 --- a/third_party/icu/icu.gni
 +++ b/third_party/icu/icu.gni
-@@ -1,6 +1,13 @@
+@@ -1,8 +1,16 @@
  # Copyright 2019 Google LLC.
  # Use of this source code is governed by a BSD-style license that can be
  # found in the LICENSE file.
@@ -77,9 +154,13 @@ index 3af3281..15033f1 100644
 +# ls source/i18n/unicode/*h | sort | sed 's/^source\(.*\)$/  "\$_src\1",/'
 +
  _src = "../externals/icu/source"
- icu_sources = [
+-icu_sources = [
++
++common_icu_sources = [
    "$_src/common/appendable.cpp",
-@@ -12,14 +19,16 @@ icu_sources = [
+   "$_src/common/bmpset.cpp",
+   "$_src/common/bmpset.h",
+@@ -12,14 +20,16 @@ icu_sources = [
    "$_src/common/bytesinkutil.cpp",
    "$_src/common/bytesinkutil.h",
    "$_src/common/bytestream.cpp",
@@ -97,7 +178,7 @@ index 3af3281..15033f1 100644
    "$_src/common/cmemory.cpp",
    "$_src/common/cmemory.h",
    "$_src/common/cpputils.h",
-@@ -44,25 +53,34 @@ icu_sources = [
+@@ -44,25 +54,34 @@ icu_sources = [
    "$_src/common/icuplugimp.h",
    "$_src/common/loadednormalizer2impl.cpp",
    "$_src/common/localebuilder.cpp",
@@ -133,7 +214,7 @@ index 3af3281..15033f1 100644
    "$_src/common/normalizer2.cpp",
    "$_src/common/normalizer2impl.cpp",
    "$_src/common/normalizer2impl.h",
-@@ -73,17 +91,17 @@ icu_sources = [
+@@ -73,17 +92,17 @@ icu_sources = [
    "$_src/common/pluralmap.cpp",
    "$_src/common/pluralmap.h",
    "$_src/common/propname.cpp",
@@ -153,7 +234,7 @@ index 3af3281..15033f1 100644
    "$_src/common/rbbidata.cpp",
    "$_src/common/rbbidata.h",
    "$_src/common/rbbinode.cpp",
-@@ -98,10 +116,12 @@ icu_sources = [
+@@ -98,10 +117,12 @@ icu_sources = [
    "$_src/common/rbbistbl.cpp",
    "$_src/common/rbbitblb.cpp",
    "$_src/common/rbbitblb.h",
@@ -167,7 +248,7 @@ index 3af3281..15033f1 100644
    "$_src/common/ruleiter.cpp",
    "$_src/common/ruleiter.h",
    "$_src/common/schriter.cpp",
-@@ -127,63 +147,63 @@ icu_sources = [
+@@ -127,63 +148,63 @@ icu_sources = [
    "$_src/common/uarrsort.h",
    "$_src/common/uassert.h",
    "$_src/common/ubidi.cpp",
@@ -247,7 +328,7 @@ index 3af3281..15033f1 100644
    "$_src/common/ucol_data.h",
    "$_src/common/ucol_swp.cpp",
    "$_src/common/ucol_swp.h",
-@@ -207,12 +227,13 @@ icu_sources = [
+@@ -207,12 +228,13 @@ icu_sources = [
    "$_src/common/uinvchar.cpp",
    "$_src/common/uinvchar.h",
    "$_src/common/uiter.cpp",
@@ -262,7 +343,7 @@ index 3af3281..15033f1 100644
    "$_src/common/umapfile.cpp",
    "$_src/common/umapfile.h",
    "$_src/common/umath.cpp",
-@@ -220,11 +241,90 @@ icu_sources = [
+@@ -220,11 +242,90 @@ icu_sources = [
    "$_src/common/umutex.cpp",
    "$_src/common/umutex.h",
    "$_src/common/unames.cpp",
@@ -354,7 +435,7 @@ index 3af3281..15033f1 100644
    "$_src/common/unicode/caniter.h",
    "$_src/common/unicode/casemap.h",
    "$_src/common/unicode/char16ptr.h",
-@@ -239,6 +339,8 @@ icu_sources = [
+@@ -239,6 +340,8 @@ icu_sources = [
    "$_src/common/unicode/icudataver.h",
    "$_src/common/unicode/icuplug.h",
    "$_src/common/unicode/idna.h",
@@ -363,7 +444,7 @@ index 3af3281..15033f1 100644
    "$_src/common/unicode/localpointer.h",
    "$_src/common/unicode/locdspnm.h",
    "$_src/common/unicode/locid.h",
-@@ -267,13 +369,13 @@ icu_sources = [
+@@ -267,13 +370,13 @@ icu_sources = [
    "$_src/common/unicode/ucasemap.h",
    "$_src/common/unicode/ucat.h",
    "$_src/common/unicode/uchar.h",
@@ -379,7 +460,7 @@ index 3af3281..15033f1 100644
    "$_src/common/unicode/ucnvsel.h",
    "$_src/common/unicode/uconfig.h",
    "$_src/common/unicode/ucpmap.h",
-@@ -294,8 +396,8 @@ icu_sources = [
+@@ -294,8 +397,8 @@ icu_sources = [
    "$_src/common/unicode/unimatch.h",
    "$_src/common/unicode/uniset.h",
    "$_src/common/unicode/unistr.h",
@@ -389,7 +470,7 @@ index 3af3281..15033f1 100644
    "$_src/common/unicode/uobject.h",
    "$_src/common/unicode/urename.h",
    "$_src/common/unicode/urep.h",
-@@ -308,93 +410,15 @@ icu_sources = [
+@@ -308,93 +411,18 @@ icu_sources = [
    "$_src/common/unicode/ustring.h",
    "$_src/common/unicode/ustringtrie.h",
    "$_src/common/unicode/utext.h",
@@ -481,10 +562,13 @@ index 3af3281..15033f1 100644
 -  "$_src/common/uvectr64.h",
 -  "$_src/common/wintz.cpp",
 -  "$_src/common/wintz.h",
++]
++
++i18n_icu_sources = [
    "$_src/i18n/alphaindex.cpp",
    "$_src/i18n/anytrans.cpp",
    "$_src/i18n/anytrans.h",
-@@ -416,35 +440,34 @@ icu_sources = [
+@@ -416,35 +444,34 @@ icu_sources = [
    "$_src/i18n/chnsecal.h",
    "$_src/i18n/choicfmt.cpp",
    "$_src/i18n/coleitr.cpp",
@@ -527,7 +611,7 @@ index 3af3281..15033f1 100644
    "$_src/i18n/collationruleparser.cpp",
    "$_src/i18n/collationruleparser.h",
    "$_src/i18n/collationsets.cpp",
-@@ -455,6 +478,7 @@ icu_sources = [
+@@ -455,6 +482,7 @@ icu_sources = [
    "$_src/i18n/collationtailoring.h",
    "$_src/i18n/collationweights.cpp",
    "$_src/i18n/collationweights.h",
@@ -535,7 +619,7 @@ index 3af3281..15033f1 100644
    "$_src/i18n/collunsafe.h",
    "$_src/i18n/compactdecimalformat.cpp",
    "$_src/i18n/coptccal.cpp",
-@@ -490,28 +514,32 @@ icu_sources = [
+@@ -490,28 +518,32 @@ icu_sources = [
    "$_src/i18n/dcfmtsym.cpp",
    "$_src/i18n/decContext.cpp",
    "$_src/i18n/decContext.h",
@@ -573,7 +657,7 @@ index 3af3281..15033f1 100644
    "$_src/i18n/dtitvinf.cpp",
    "$_src/i18n/dtptngen.cpp",
    "$_src/i18n/dtptngen_impl.h",
-@@ -522,10 +550,16 @@ icu_sources = [
+@@ -522,10 +554,16 @@ icu_sources = [
    "$_src/i18n/esctrn.h",
    "$_src/i18n/ethpccal.cpp",
    "$_src/i18n/ethpccal.h",
@@ -591,7 +675,7 @@ index 3af3281..15033f1 100644
    "$_src/i18n/fphdlimp.cpp",
    "$_src/i18n/fphdlimp.h",
    "$_src/i18n/fpositer.cpp",
-@@ -548,6 +582,8 @@ icu_sources = [
+@@ -548,6 +586,8 @@ icu_sources = [
    "$_src/i18n/listformatter.cpp",
    "$_src/i18n/measfmt.cpp",
    "$_src/i18n/measunit.cpp",
@@ -600,7 +684,7 @@ index 3af3281..15033f1 100644
    "$_src/i18n/measure.cpp",
    "$_src/i18n/msgfmt.cpp",
    "$_src/i18n/msgfmt_impl.h",
-@@ -593,6 +629,7 @@ icu_sources = [
+@@ -593,6 +633,7 @@ icu_sources = [
    "$_src/i18n/number_multiplier.cpp",
    "$_src/i18n/number_multiplier.h",
    "$_src/i18n/number_notation.cpp",
@@ -608,7 +692,7 @@ index 3af3281..15033f1 100644
    "$_src/i18n/number_padding.cpp",
    "$_src/i18n/number_patternmodifier.cpp",
    "$_src/i18n/number_patternmodifier.h",
-@@ -604,7 +641,10 @@ icu_sources = [
+@@ -604,7 +645,10 @@ icu_sources = [
    "$_src/i18n/number_scientific.h",
    "$_src/i18n/number_skeletons.cpp",
    "$_src/i18n/number_skeletons.h",
@@ -619,7 +703,7 @@ index 3af3281..15033f1 100644
    "$_src/i18n/number_utils.cpp",
    "$_src/i18n/number_utils.h",
    "$_src/i18n/number_utypes.h",
-@@ -628,6 +668,7 @@ icu_sources = [
+@@ -628,6 +672,7 @@ icu_sources = [
    "$_src/i18n/numparse_utils.h",
    "$_src/i18n/numparse_validators.cpp",
    "$_src/i18n/numparse_validators.h",
@@ -627,7 +711,7 @@ index 3af3281..15033f1 100644
    "$_src/i18n/numrange_fluent.cpp",
    "$_src/i18n/numrange_impl.cpp",
    "$_src/i18n/numrange_impl.h",
-@@ -637,6 +678,8 @@ icu_sources = [
+@@ -637,6 +682,8 @@ icu_sources = [
    "$_src/i18n/olsontz.h",
    "$_src/i18n/persncal.cpp",
    "$_src/i18n/persncal.h",
@@ -636,7 +720,7 @@ index 3af3281..15033f1 100644
    "$_src/i18n/plurfmt.cpp",
    "$_src/i18n/plurrule.cpp",
    "$_src/i18n/plurrule_impl.h",
-@@ -646,9 +689,9 @@ icu_sources = [
+@@ -646,9 +693,9 @@ icu_sources = [
    "$_src/i18n/quantityformatter.h",
    "$_src/i18n/rbnf.cpp",
    "$_src/i18n/rbt.cpp",
@@ -647,7 +731,7 @@ index 3af3281..15033f1 100644
    "$_src/i18n/rbt_pars.cpp",
    "$_src/i18n/rbt_pars.h",
    "$_src/i18n/rbt_rule.cpp",
-@@ -694,6 +737,8 @@ icu_sources = [
+@@ -694,6 +741,8 @@ icu_sources = [
    "$_src/i18n/sortkey.cpp",
    "$_src/i18n/standardplural.cpp",
    "$_src/i18n/standardplural.h",
@@ -656,7 +740,7 @@ index 3af3281..15033f1 100644
    "$_src/i18n/strmatch.cpp",
    "$_src/i18n/strmatch.h",
    "$_src/i18n/strrepl.cpp",
-@@ -728,10 +773,10 @@ icu_sources = [
+@@ -728,10 +777,10 @@ icu_sources = [
    "$_src/i18n/ucln_in.cpp",
    "$_src/i18n/ucln_in.h",
    "$_src/i18n/ucol.cpp",
@@ -668,7 +752,7 @@ index 3af3281..15033f1 100644
    "$_src/i18n/ucsdet.cpp",
    "$_src/i18n/udat.cpp",
    "$_src/i18n/udateintervalformat.cpp",
-@@ -747,6 +792,49 @@ icu_sources = [
+@@ -747,6 +796,49 @@ icu_sources = [
    "$_src/i18n/unesctrn.h",
    "$_src/i18n/uni2name.cpp",
    "$_src/i18n/uni2name.h",
@@ -718,7 +802,7 @@ index 3af3281..15033f1 100644
    "$_src/i18n/unicode/alphaindex.h",
    "$_src/i18n/unicode/basictz.h",
    "$_src/i18n/unicode/calendar.h",
-@@ -768,6 +856,7 @@ icu_sources = [
+@@ -768,6 +860,7 @@ icu_sources = [
    "$_src/i18n/unicode/fieldpos.h",
    "$_src/i18n/unicode/fmtable.h",
    "$_src/i18n/unicode/format.h",
@@ -726,7 +810,7 @@ index 3af3281..15033f1 100644
    "$_src/i18n/unicode/fpositer.h",
    "$_src/i18n/unicode/gender.h",
    "$_src/i18n/unicode/gregocal.h",
-@@ -806,21 +895,23 @@ icu_sources = [
+@@ -806,21 +899,23 @@ icu_sources = [
    "$_src/i18n/unicode/tzrule.h",
    "$_src/i18n/unicode/tztrans.h",
    "$_src/i18n/unicode/ucal.h",
@@ -753,7 +837,7 @@ index 3af3281..15033f1 100644
    "$_src/i18n/unicode/unumsys.h",
    "$_src/i18n/unicode/upluralrules.h",
    "$_src/i18n/unicode/uregex.h",
-@@ -831,39 +922,4 @@ icu_sources = [
+@@ -831,39 +926,4 @@ icu_sources = [
    "$_src/i18n/unicode/utmscale.h",
    "$_src/i18n/unicode/utrans.h",
    "$_src/i18n/unicode/vtzone.h",
@@ -794,7 +878,7 @@ index 3af3281..15033f1 100644
 -  "$_src/i18n/ztrans.h",
  ]
 diff --git a/third_party/third_party.gni b/third_party/third_party.gni
-index d9e061b..cdabf3f 100644
+index d9e061b..a9234cf 100644
 --- a/third_party/third_party.gni
 +++ b/third_party/third_party.gni
 @@ -59,7 +59,9 @@ template("third_party") {
@@ -802,8 +886,8 @@ index d9e061b..cdabf3f 100644
    # You can't make a static_library() without object files to archive,
    # but we can treat targets without object files as a source_set().
 -  if (defined(invoker.sources)) {
-+  if (defined(invoker.shared_lib) && invoker.shared_lib) {
-+    _mode = "shared_library"
++  if (defined(invoker.link_mode)) {
++    _mode = invoker.link_mode
 +  } else if (defined(invoker.sources)) {
      _mode = "static_library"
    } else {

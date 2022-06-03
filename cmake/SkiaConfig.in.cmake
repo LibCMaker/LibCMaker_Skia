@@ -1133,12 +1133,37 @@ if(@skia_use_icu@ AND NOT @skia_use_system_icu@)
   if(@export_icu_from_skia@)
     #if(is_component_build)
     if(@is_component_build@)
-      set_and_check(icu_LIB "${skia_LIB_DIR}/@icu_FILE_NAME@")
-      add_library(SkiaInternal_icu INTERFACE)
+      add_library(SkiaInternal_icu_common SHARED IMPORTED)
+      skia_set_target_properties(SkiaInternal_icu_common)
+      set_and_check(icu_common_LIB "${skia_DLL_DIR}/@icu_common_FILE_NAME@")
+      set_target_properties(SkiaInternal_icu_common PROPERTIES
+        IMPORTED_LOCATION "${icu_common_LIB}"
+      )
+      #if(is_win)
+      if(@is_win@)
+        set_and_check(icu_common_DLL_LIB "${skia_LIB_DIR}/@icu_common_DLL_LIB_FILE_NAME@")
+        set_target_properties(SkiaInternal_icu_common PROPERTIES
+          IMPORTED_IMPLIB "${icu_common_DLL_LIB}"
+        )
+      endif()
+
+      add_library(SkiaInternal_icu SHARED IMPORTED)
       add_library(ICU::ICU ALIAS SkiaInternal_icu)
       skia_set_target_properties(SkiaInternal_icu)
-      skia_set_imported_location(SkiaInternal_icu SHARED
-        "${icu_LIB}"
+      set_and_check(icu_LIB "${skia_DLL_DIR}/@icu_FILE_NAME@")
+      set_target_properties(SkiaInternal_icu PROPERTIES
+        IMPORTED_LOCATION "${icu_LIB}"
+      )
+      #if(is_win)
+      if(@is_win@)
+        set_and_check(icu_DLL_LIB "${skia_LIB_DIR}/@icu_DLL_LIB_FILE_NAME@")
+        set_target_properties(SkiaInternal_icu PROPERTIES
+          IMPORTED_IMPLIB "${icu_DLL_LIB}"
+        )
+      endif()
+      set_property(TARGET SkiaInternal_icu APPEND PROPERTY
+        INTERFACE_LINK_LIBRARIES
+          SkiaInternal_icu_common
       )
 
       set_property(TARGET SkiaInternal_icu APPEND PROPERTY
